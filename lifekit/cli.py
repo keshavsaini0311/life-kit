@@ -13,6 +13,11 @@ from . import catalog, connections, core, learning, ledger, maintain, questions,
 
 
 def main(argv=None):
+    for stream in (sys.stdout, sys.stderr):
+        try:  # a cp1252 Windows console cannot print arrows or dashes; show "?" instead of crashing
+            stream.reconfigure(errors="replace")
+        except (AttributeError, ValueError):
+            pass
     parser = argparse.ArgumentParser(description="Life Kit: a local workspace for your own routines.")
     parser.add_argument("--workspace", type=Path, default=Path("workspace"), help="Private data folder (default: ./workspace)")
     sub = parser.add_subparsers(dest="command", required=True)

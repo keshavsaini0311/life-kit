@@ -55,6 +55,16 @@ class EndToEndTests(unittest.TestCase):
         self.assertEqual(changed, [])
         self.assertFalse(list(self.root.rglob("*.suggested")))
 
+    def test_setup_works_on_a_non_utf8_console(self):
+        # Windows consoles often use cp1252, which cannot encode arrows or dashes in our messages.
+        import os
+        env = dict(os.environ, PYTHONIOENCODING="cp1252")
+        result = subprocess.run([sys.executable, "-m", "lifekit", "--workspace", str(self.root), "setup",
+                                 "--answers", str(REPO / "examples/answers.json")],
+                                capture_output=True, cwd=str(REPO), env=env)
+        self.assertEqual(result.returncode, 0, result.stderr.decode("cp1252", "replace"))
+        self.assertIn(b"Setup summary", result.stdout)
+
     def test_doctor_reports_connections_and_schedules(self):
         self.setup_cli()
         result = subprocess.run([sys.executable, "-m", "lifekit", "--workspace", str(self.root), "doctor"],

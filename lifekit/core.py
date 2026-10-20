@@ -52,9 +52,8 @@ def locked(root):
     with path.open("a+") as stream:
         if os.name == "nt":
             import msvcrt
-            stream.seek(0)
-            if not stream.read(1):
-                stream.write("0"); stream.flush()
+            # Lock byte 0 without reading it: another writer's lock makes that byte unreadable,
+            # and Windows allows locking past the end of an empty file.
             stream.seek(0)
             # LK_LOCK gives up after ~10 s of contention; keep polling up to a minute instead.
             deadline = time.monotonic() + 60
