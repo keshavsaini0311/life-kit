@@ -123,7 +123,7 @@ def apply(root, answers):
 
     for template, dest, domain in FILES:
         if domain is None or domain in domains:
-            put(dest, Template((TEMPLATES / "workspace" / template).read_text(encoding="utf-8")).substitute(mapping))
+            put(dest, Template((TEMPLATES / "context" / template).read_text(encoding="utf-8")).substitute(mapping))
     if "finance" in domains and not (root / "finance/rules.json").exists():
         put("finance/rules.json", "[]\n")
     for domain, folders in DIRS.items():
