@@ -5,7 +5,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-from . import catalog, connections, core, questions, render, runners, schedule
+from . import catalog, connections, core, questions, render, runners, schedule, telegram
 
 ANSWERS = ".local/setup-answers.json"
 BACK = object()
@@ -127,11 +127,11 @@ def run(root, io=None, answers=None, answers_file=None, interactive=True, only=N
     for rel in finish(root, stored):
         if rel.endswith(".suggested"):
             io.say("Kept your edited " + rel[:-10] + "; new version saved as " + rel)
-    integrate(root, stored, io)
+    integrate(root, stored, io, interactive=interactive)
     return stored
 
 
-def integrate(root, answers, io, run=subprocess.run):
+def integrate(root, answers, io, run=subprocess.run, interactive=True):
     """Plugins and connection checks: the only setup steps that start other programs, each opted into."""
     plugins = [p for p in catalog.PLUGINS if p["id"] in (answers.get("plugins.selected") or [])]
     for plugin in plugins:
@@ -155,6 +155,15 @@ def integrate(root, answers, io, run=subprocess.run):
                 io.say("  Check: " + record["status"] + ("" if record["status"] == "ok" else " (" + str(record.get("error")) + ")"))
             except ValueError as exc:
                 io.say("  Check skipped: " + str(exc))
+    if answers.get("telegram.enabled") and not (core.load(root)[1].get("telegram") or {}).get("owner"):
+        if interactive:
+            io.say("\n== Pair your Telegram bot ==")
+            try:
+                telegram.setup(root, io)
+            except (ValueError, telegram.TelegramError) as exc:
+                io.say("Telegram not paired: " + str(exc) + " Try again with: life-kit telegram setup")
+        else:
+            io.say("Pair Telegram later with: life-kit --workspace " + str(root) + " telegram setup")
     if answers.get("runners.install_now"):
         try:
             for line in schedule.install(root, run=run):
@@ -178,6 +187,12 @@ def finish(root, answers):
                 profile[key] = answers["basics." + key]
         if "domains.enabled" in answers:
             config["domains"] = answers["domains.enabled"] or []
+        if "telegram.enabled" in answers:
+            tg = config.setdefault("telegram", {})
+            tg["enabled"] = bool(answers["telegram.enabled"])
+            for key in ("reply_domains", "notify"):
+                if "telegram." + key in answers:
+                    tg[key] = answers["telegram." + key] or []
         if "assistants.enabled" in answers:
             enabled = answers["assistants.enabled"] or []
             config["assistants"] = enabled

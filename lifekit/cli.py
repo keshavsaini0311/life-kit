@@ -9,7 +9,7 @@ import getpass
 import os
 import subprocess
 
-from . import catalog, connections, core, learning, ledger, maintain, questions, runners, schedule, wizard
+from . import catalog, connections, core, learning, ledger, maintain, questions, runners, schedule, telegram, wizard
 
 
 def main(argv=None):
@@ -59,6 +59,8 @@ def main(argv=None):
     p.add_argument("--assistant", choices=("claude", "codex"))
     p = ssub.add_parser("off")
     p.add_argument("runner", choices=sorted(runners.RUNNERS))
+    tg = sub.add_parser("telegram", help="Private phone channel: setup (pair), check, run (foreground service)")
+    tg.add_argument("action", choices=("setup", "check", "run"))
     sub.add_parser("runners", help="List scheduled jobs, their times and whether they can run")
     sub.add_parser("plugins", help="Recommended Claude Code plugins and their install commands")
     p = sub.add_parser("open", help="Start Claude Code or Codex in the workspace with your connections")
@@ -138,6 +140,20 @@ def main(argv=None):
                     print(line)
             else:
                 print("\n".join(schedule.status(root)))
+        elif args.command == "telegram":
+            if args.action == "setup":
+                telegram.setup(root, wizard.ConsoleIO())
+                print("Install the background service: life-kit --workspace " + str(root) + " schedule install")
+            elif args.action == "check":
+                _, config = core.load(root)
+                token = core.secret(root, "telegram_token")
+                if not token:
+                    raise ValueError("No bot token saved. Run: life-kit telegram setup")
+                me = telegram.Api(token).call("getMe")
+                owner = (config.get("telegram") or {}).get("owner")
+                print("Bot @" + me.get("username", "?") + " reachable; " + ("paired with one private chat." if owner else "not paired."))
+            else:
+                telegram.run(root)
         elif args.command == "runners":
             root, config = core.load(root)
             ready = runners.available(config)
@@ -180,7 +196,7 @@ def main(argv=None):
     except (KeyboardInterrupt, EOFError):
         print("\nStopped. Answers so far are saved; run setup again to continue.", file=sys.stderr)
         return 130
-    except (ValueError, OSError, UnicodeError) as exc:
+    except (ValueError, OSError, UnicodeError, telegram.TelegramError) as exc:
         print("Error: " + str(exc), file=sys.stderr)
         return 1
 

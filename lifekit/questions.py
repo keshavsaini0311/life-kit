@@ -349,3 +349,28 @@ def _extend_runners():
 
 
 _extend_runners()
+
+
+def _extend_telegram():
+    from . import runners
+    on = lambda a: bool(a.get("telegram.enabled"))
+    QUESTIONS.extend([
+        _q("telegram.enabled", "telegram", "Set up a private Telegram bot to control Life Kit from your phone?",
+           "You create your own bot with @BotFather (2 minutes), paste its token (hidden), then send a one-time "
+           "pairing code from your private chat. Only that chat is obeyed. Your computer must be on for it to answer.",
+           "yes", "No phone channel. You can add it later with `life-kit telegram setup`.", "yesno"),
+        _q("telegram.reply_domains", "telegram", "Which areas may send their content to your phone?",
+           "Messages pass through Telegram's servers. Areas not listed only get 'done / failed, saved on your "
+           "computer'. Sharing career replies (job lists, prep) but keeping money and personal local is the usual choice.",
+           "career", "Only status messages are sent; all content stays on your computer.", "multi",
+           choices=["career", "work", "personal", "finance"], default=lambda a: "career", when=on,
+           when_text="Telegram enabled"),
+        _q("telegram.notify", "telegram", "Which scheduled jobs should ping your phone when they finish?",
+           "Pings arrive when each job finishes, so they follow the times you chose for scheduled jobs.",
+           "nightly-report, job-discovery", "No pings; use /status to check.", "multi",
+           choices=list(runners.RUNNERS), default=lambda a: ",".join(a.get("runners.selected") or []) or None,
+           when=on, when_text="Telegram enabled"),
+    ])
+
+
+_extend_telegram()

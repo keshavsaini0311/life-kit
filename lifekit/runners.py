@@ -80,26 +80,54 @@ def command(root, config, runner_id):
     able = [a for a in preferred if a and a in enabled_assistants and all(a in i["headless"] for i in items)]
     if not able:
         raise ValueError(runner_id + " needs an assistant that can read " + ", ".join(i["title"] for i in items))
-    assistant = able[0]
+    return agent_argv(root, able[0], items, RUNNERS[runner_id].get("web", False)), able[0]
+
+
+def agent_argv(root, assistant, items=(), web=False):
+    """Read-only assistant command limited to the read tools of `items`. The prompt goes on stdin."""
     if assistant == "claude":
         tools = ["Read", "Glob", "Grep"] + [connections.tool_name(i, t) for i in items for t in i["read_tools"]]
-        if RUNNERS[runner_id].get("web"):
+        if web:
             tools += ["WebSearch", "WebFetch"]
         argv = ["claude", "-p", "--output-format", "text", "--max-turns", "40"]
         if any(connections.claude_server(i) for i in items):
             argv += ["--mcp-config", str(Path(root) / ".mcp.json")]
-        return argv + ["--allowedTools"] + tools, assistant
+        return argv + ["--allowedTools"] + tools
     argv = ["codex", "exec", "--ephemeral", "--skip-git-repo-check", "--cd", str(root), "--sandbox", "read-only",
             "-c", "features.apps=" + ("true" if any(i["server"]["type"] == "account" for i in items) else "false"),
             "-c", "features.plugins=false", "-c", "features.browser_use=false", "-c", "features.computer_use=false"]
-    if RUNNERS[runner_id].get("web"):
+    if web:
         argv += ["-c", 'web_search="live"']
     used = {i["id"] for i in items}
     for name in sorted(_codex_servers(root) - used):
         argv += ["-c", "mcp_servers." + name + ".enabled=false"]
     for item in items:
         argv += connections.codex_overrides(item)
-    return argv, assistant
+    return argv
+
+
+def ask(root, config, text, run=subprocess.run, timeout=600):
+    """One read-only question to the primary assistant with no connections. Returns its answer."""
+    assistant = config.get("primary_assistant") or (config.get("assistants") or ["claude"])[0]
+    argv = agent_argv(root, assistant)
+    out = None
+    if assistant == "codex":
+        fd, out = tempfile.mkstemp(prefix=".ask-", dir=str(Path(root) / ".local"))
+        os.close(fd)
+        argv += ["--output-last-message", out]
+    try:
+        result = run(argv, input=text, cwd=str(root), env=connections.env(root), capture_output=True, text=True, timeout=timeout)
+        answer = (Path(out).read_text(encoding="utf-8") if out else "") or result.stdout
+    except FileNotFoundError:
+        raise ValueError(assistant + " is not installed")
+    except subprocess.TimeoutExpired:
+        raise ValueError("no answer within " + str(timeout) + "s")
+    finally:
+        if out and os.path.exists(out):
+            os.unlink(out)
+    if result.returncode != 0:
+        raise ValueError(assistant + " exited with " + str(result.returncode))
+    return answer.strip()
 
 
 @contextmanager
