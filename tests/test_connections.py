@@ -113,9 +113,11 @@ class ConnectionTests(unittest.TestCase):
             connections.verify(self.root, "github", "claude", run=fake_run("{}"))
 
     def test_cli_add_custom_server(self):
+        import contextlib, io
         from lifekit import cli
-        code = cli.main(["--workspace", str(self.root), "connect", "add-custom", "team-kb",
-                         "--url", "https://kb.example.com/mcp", "--read-tools", "search", "--verify-tool", "search"])
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = cli.main(["--workspace", str(self.root), "connect", "add-custom", "team-kb",
+                             "--url", "https://kb.example.com/mcp", "--read-tools", "search", "--verify-tool", "search"])
         self.assertEqual(code, 0)
         self.assertEqual(json.loads((self.root / ".mcp.json").read_text())["mcpServers"]["team-kb"]["url"],
                          "https://kb.example.com/mcp")

@@ -9,7 +9,7 @@ import getpass
 import os
 import subprocess
 
-from . import catalog, connections, core, questions, wizard
+from . import catalog, connections, core, learning, ledger, maintain, questions, wizard
 
 
 def main(argv=None):
@@ -36,6 +36,13 @@ def main(argv=None):
     p = csub.add_parser("verify")
     p.add_argument("id")
     p.add_argument("--assistant", choices=("claude", "codex"))
+    led = sub.add_parser("ledger", help="Bank CSV import and generated monthly ledgers")
+    lsub = led.add_subparsers(dest="action", required=True)
+    lsub.add_parser("import", help="Import finance/inbox/*.csv and post rows matching finance/rules.json")
+    p = lsub.add_parser("render")
+    p.add_argument("month", nargs="?", help="YYYY-MM (default: this month)")
+    sub.add_parser("learn", help="Write the learning report (rates, follow-ups) from the event log")
+    sub.add_parser("maintain", help="Import, rebuild ledgers and learning, list stale data")
     sub.add_parser("plugins", help="Recommended Claude Code plugins and their install commands")
     p = sub.add_parser("open", help="Start Claude Code or Codex in the workspace with your connections")
     p.add_argument("assistant", choices=("claude", "codex"))
@@ -78,6 +85,20 @@ def main(argv=None):
             print(questions.guide_markdown(), end="")
         elif args.command == "connect":
             return connect(root, args)
+        elif args.command == "ledger" and args.action == "import":
+            result = ledger.import_inbox(root)
+            print("Posted " + str(result["posted"]) + ", awaiting a rule " + str(result["review"])
+                  + ", duplicates skipped " + str(result["skipped_dup"]) + ".")
+            for error in result["errors"]:
+                print("Not imported: " + error, file=sys.stderr)
+            return 1 if result["errors"] else 0
+        elif args.command == "ledger":
+            from datetime import date
+            print("Ledger saved: " + str(ledger.render(root, args.month or date.today().strftime("%Y-%m"))))
+        elif args.command == "learn":
+            print("Learning report saved: " + str(learning.report(root)))
+        elif args.command == "maintain":
+            print("Maintenance report saved: " + str(maintain.run(root)))
         elif args.command == "plugins":
             for plugin in catalog.PLUGINS:
                 print(plugin["id"] + ": " + plugin["why"] + "\n    " + plugin["install"])

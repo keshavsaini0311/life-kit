@@ -15,6 +15,7 @@ STAGES = ("receipt", "auto_reply", "accept", "reply", "referral", "assessment", 
 EVENT_SCHEMA = 1  # event rows; never bump without a log migration
 CONFIG_SCHEMA = 2  # life.json; v2 adds optional setup keys (profile, domains, runners, telegram...)
 SCHEMA = EVENT_SCHEMA
+SOURCES = ("user-reported", "bank-csv")  # bank-csv: observed from a statement, spend only
 PRIVACY = {"reports": "local", "external_actions": "explicit-user-request"}
 
 
@@ -179,7 +180,9 @@ def events(root):
             stamp = datetime.fromisoformat(row["at"])
             if stamp.tzinfo is None or not isinstance(row["id"], str) or row["id"] in ids:
                 raise ValueError()
-            if row.get("domain") not in DOMAINS or row.get("source") != "user-reported":
+            if row.get("domain") not in DOMAINS or row.get("source") not in SOURCES:
+                raise ValueError()
+            if row["source"] != "user-reported" and row["kind"] != "spend":
                 raise ValueError()
             if row["kind"] == "checkin":
                 values = row["values"]
@@ -197,6 +200,8 @@ def events(root):
                     raise ValueError()
                 if not isinstance(row["currency"], str) or len(row["currency"]) != 3 or not row["category"].strip():
                     raise ValueError()
+                if "on" in row:
+                    date.fromisoformat(row["on"])
             elif row["kind"] == "action":
                 if not row["channel"].strip() or not row["target"].strip():
                     raise ValueError()
@@ -218,7 +223,10 @@ def events(root):
 def append(root, row, request_id=None):
     root, _ = load(root)
     row = dict(row)
-    row.update(schema_version=SCHEMA, source="user-reported")
+    row["source"] = row.get("source", "user-reported")
+    if row["source"] not in SOURCES or (row["source"] != "user-reported" and row["kind"] != "spend"):
+        raise ValueError("Unsupported event source.")
+    row["schema_version"] = SCHEMA
     if request_id:
         row["request_id"] = request_id
     with locked(root):
@@ -267,7 +275,7 @@ def checkin(root, sleep=None, gym=None, prep=None, request_id=None):
     return append(root, {"kind": "checkin", "domain": "personal", "values": values}, request_id)
 
 
-def spend(root, amount, category, note="", request_id=None):
+def spend(root, amount, category, note="", request_id=None, source="user-reported", ref=None, on=None):
     _, config = load(root)
     try:
         money = Decimal(amount)
@@ -277,8 +285,19 @@ def spend(root, amount, category, note="", request_id=None):
         raise ValueError("Amount must be positive with at most two decimal places.")
     if not category.strip():
         raise ValueError("Category cannot be empty.")
-    return append(root, {"kind": "spend", "domain": "finance", "amount": format(money, ".2f"),
-                         "currency": config["currency"], "category": category, "note": note}, request_id)
+    row = {"kind": "spend", "domain": "finance", "amount": format(money, ".2f"),
+           "currency": config["currency"], "category": category, "note": note, "source": source}
+    if ref:
+        row["ref"] = ref
+    if on:
+        date.fromisoformat(on)
+        row["on"] = on
+    return append(root, row, request_id)
+
+
+def event_day(event):
+    """Local calendar day an event belongs to: the transaction date when known, else when it was recorded."""
+    return date.fromisoformat(event["on"]) if event.get("on") else datetime.fromisoformat(event["at"]).astimezone().date()
 
 
 def action(root, domain, channel, target, variant="unrecorded", resume=None, request_id=None):
