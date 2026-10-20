@@ -9,7 +9,7 @@ import getpass
 import os
 import subprocess
 
-from . import catalog, connections, core, learning, ledger, maintain, questions, wizard
+from . import catalog, connections, core, learning, ledger, maintain, questions, runners, wizard
 
 
 def main(argv=None):
@@ -43,6 +43,10 @@ def main(argv=None):
     p.add_argument("month", nargs="?", help="YYYY-MM (default: this month)")
     sub.add_parser("learn", help="Write the learning report (rates, follow-ups) from the event log")
     sub.add_parser("maintain", help="Import, rebuild ledgers and learning, list stale data")
+    p = sub.add_parser("run", help="Run one scheduled job now (once per scheduled slot unless --force)")
+    p.add_argument("runner", choices=sorted(runners.RUNNERS))
+    p.add_argument("--force", action="store_true")
+    sub.add_parser("runners", help="List scheduled jobs, their times and whether they can run")
     sub.add_parser("plugins", help="Recommended Claude Code plugins and their install commands")
     p = sub.add_parser("open", help="Start Claude Code or Codex in the workspace with your connections")
     p.add_argument("assistant", choices=("claude", "codex"))
@@ -99,6 +103,19 @@ def main(argv=None):
             print("Learning report saved: " + str(learning.report(root)))
         elif args.command == "maintain":
             print("Maintenance report saved: " + str(maintain.run(root)))
+        elif args.command == "run":
+            record = runners.run(root, args.runner, force=args.force)
+            print(args.runner + ": " + record["status"] + (" — " + record["report"] if record.get("report") else "")
+                  + (" (" + record["error"] + ")" if record.get("error") else ""))
+            return 0 if record["status"] in ("ok", "skipped-done", "skipped-locked") else 1
+        elif args.command == "runners":
+            root, config = core.load(root)
+            ready = runners.available(config)
+            for rid, r in runners.RUNNERS.items():
+                s = runners.setting(config, rid)
+                print(rid + ": " + r["title"] + " — " + ",".join(s["times"]) + " " + s["days"] + "; "
+                      + ("installed" if s["enabled"] else "not scheduled") + ("" if rid in ready else "; needs area " + "/".join(r["domains_any"] or ["-"])
+                         + (" and connection " + "/".join(r["needs_any"]) if r["needs_any"] else "")))
         elif args.command == "plugins":
             for plugin in catalog.PLUGINS:
                 print(plugin["id"] + ": " + plugin["why"] + "\n    " + plugin["install"])
