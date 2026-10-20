@@ -1,0 +1,21 @@
+# Personal workspaces, account sessions and generated reports never belong in source.
+workspace/
+data/
+.local/
+.codex/
+.env
+.env.*
+!.env.example
+*.sqlite*
+*.log
+*.pem
+*.key
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+.DS_Store
+
