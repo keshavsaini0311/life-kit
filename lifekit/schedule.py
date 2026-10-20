@@ -123,17 +123,19 @@ def _cron_lines(jobs_):
     return lines
 
 
-def _windows(job, root):
+def _windows(job, root, home):
     wrapper = Path(root) / ".local/runners" / (job["runner"] + ".cmd")
     body = "@echo off\r\nset \"PYTHONPATH=" + SOURCE + "\"\r\n" + " ".join('"' + a + '"' for a in job["argv"]) + "\r\n"
     actions = [{"path": wrapper, "content": body}]
     if job["keepalive"]:
-        return actions + [{"command": ["schtasks", "/Create", "/F", "/TN", "LifeKit\\" + job["label"], "/SC", "ONLOGON", "/TR", str(wrapper)]}]
+        # The user's Startup folder needs no admin rights (an ONLOGON task usually does).
+        startup = home / "AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup" / (job["label"] + ".cmd")
+        return actions + [{"path": startup, "content": '@start "" /min "' + str(wrapper) + '"\r\n'}]
     for t in job["times"]:
         name = "LifeKit\\" + job["label"] + "-" + t.replace(":", "")
         days = _days(job["days"])
         schedule_args = ["/SC", "DAILY"] if days is None else ["/SC", "WEEKLY", "/D", ",".join(WEEKDAYS[d].upper() for d in days)]
-        actions.append({"command": ["schtasks", "/Create", "/F", "/TN", name] + schedule_args + ["/ST", t, "/TR", str(wrapper)]})
+        actions.append({"command": ["schtasks", "/Create", "/F", "/TN", name] + schedule_args + ["/ST", t, "/TR", '"' + str(wrapper) + '"']})
     return actions
 
 
@@ -150,7 +152,7 @@ def plan(jobs_, platform=sys.platform, home=None, systemd=True):
         actions.append({"cron": _cron_lines(jobs_)})
     elif platform == "win32":
         for job in jobs_:
-            actions += _windows(job, job["root"])
+            actions += _windows(job, job["root"], home)
     else:
         raise ValueError("No supported scheduler for " + platform + ". Run `life-kit run ID` from your own scheduler.")
     return actions
@@ -233,7 +235,7 @@ def install(root, dry_run=False, run=subprocess.run, platform=sys.platform, home
             if not dry_run:
                 action["path"].parent.mkdir(parents=True, exist_ok=True)
                 action["path"].write_text(action["content"], encoding="utf-8")
-            if action["path"].suffix != ".cmd":
+            if root / ".local" not in action["path"].parents:  # wrappers inside the workspace stay
                 record["files"].append(str(action["path"]))
         elif "cron" in action:
             log += ["crontab: " + line for line in _cron(root, action["cron"], run, dry_run)]

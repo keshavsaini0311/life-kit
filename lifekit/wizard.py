@@ -85,6 +85,7 @@ def run(root, io=None, answers=None, answers_file=None, interactive=True, only=N
     io = io or ConsoleIO()
     given = dict(json.loads(Path(answers_file).read_text(encoding="utf-8"))) if answers_file else {}
     given.update(answers or {})
+    fresh = set(given)
     initialized = (root / "life.json").is_file()
     stored = load_answers(root) if initialized else {}
     if initialized:
@@ -130,9 +131,10 @@ def run(root, io=None, answers=None, answers_file=None, interactive=True, only=N
                 save_answers(root, stored)
             continue
         stored[q["id"]] = value
+        fresh.add(q["id"])
         history.append(q["id"])
         save_answers(root, stored)
-    for rel in finish(root, stored):
+    for rel in finish(root, stored, fresh):
         if rel.endswith(".suggested"):
             io.say("Kept your edited " + rel[:-10] + "; new version saved as " + rel)
     integrate(root, stored, io, interactive=interactive)
@@ -217,8 +219,14 @@ def integrate(root, answers, io, run=subprocess.run, interactive=True):
                    "workspace in your home folder instead.")
 
 
-def finish(root, answers):
-    """Save life.json settings, then render context files and skills. Returns paths written."""
+def finish(root, answers, fresh=None):
+    """Save life.json settings, then render context files and skills. Returns paths written.
+
+    `fresh` = answer ids given in this run. Older answers never overwrite a setting that already
+    exists, so edits made later (`schedule set`, a hand-edited life.json) survive a re-run."""
+    fresh = set(answers) if fresh is None else set(fresh)
+    _, before = core.load(root)
+
     def change(config):
         profile = config.setdefault("profile", {})
         for key in ("name", "timezone"):
@@ -228,10 +236,10 @@ def finish(root, answers):
             config["domains"] = answers["domains.enabled"] or []
         if "telegram.enabled" in answers:
             tg = config.setdefault("telegram", {})
-            tg["enabled"] = bool(answers["telegram.enabled"])
-            for key in ("reply_domains", "notify"):
-                if "telegram." + key in answers:
-                    tg[key] = answers["telegram." + key] or []
+            for key in ("enabled", "reply_domains", "notify"):
+                if "telegram." + key in answers and ("telegram." + key in fresh or key not in tg):
+                    value = answers["telegram." + key]
+                    tg[key] = bool(value) if key == "enabled" else (value or [])
         if "assistants.enabled" in answers:
             enabled = answers["assistants.enabled"] or []
             config["assistants"] = enabled
@@ -242,7 +250,10 @@ def finish(root, answers):
         written += connections.write_configs(root, answers["connections.selected"])
     if "runners.selected" in answers:
         picked = answers["runners.selected"] or []
+        saved = before.get("runners") or {}
         for rid in runners.RUNNERS:
+            if rid in saved and "runners.selected" not in fresh and "runner." + rid not in fresh:
+                continue  # keep the schedule as last set
             q = _find("runner." + rid)
             plan = answers.get("runner." + rid) or questions.parse(q, q["default"](answers))  # suggested time
             schedule.set_runner(root, rid, ",".join(plan["times"]), plan["days"], enabled=rid in picked)

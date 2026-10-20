@@ -65,8 +65,7 @@ class RunnerTests(unittest.TestCase):
         connections.write_configs(self.root, ["gmail"])
         argv, assistant = runners.command(self.root, self.config(), "inbox-review")
         self.assertEqual(assistant, "claude")  # gmail is reachable headless only through Claude
-        tools = argv[argv.index("--allowedTools") + 1:]
-        tools = tools[:next((i for i, t in enumerate(tools) if t.startswith("--")), len(tools))]
+        tools = argv[argv.index("--allowedTools") + 1].split(",")
         self.assertIn("mcp__claude_ai_Gmail__search_threads", tools)
         for forbidden in ("Write", "Edit", "Bash", "mcp__claude_ai_Gmail__send_message"):
             self.assertNotIn(forbidden, tools)
@@ -142,6 +141,56 @@ class RunnerTests(unittest.TestCase):
             runners.run(self.root, "inbox-review", now=datetime(2026, 10, 20, 9, 5), popen=FakeProc())
         with self.assertRaises(ValueError):
             runners.run(self.root, "nope", popen=FakeProc())
+
+    def test_claude_runner_cannot_reach_write_tools(self):
+        connections.write_configs(self.root, ["gmail"])
+        argv, _ = runners.command(self.root, self.config(), "inbox-review")
+        self.assertEqual(argv[argv.index("--permission-mode") + 1], "dontAsk")
+        builtins = argv[argv.index("--tools") + 1].split(",")
+        self.assertNotIn("Bash", builtins)
+        self.assertNotIn("Write", builtins)
+        self.assertIn("Bash", argv[argv.index("--disallowedTools") + 1].split(","))
+
+    def test_ask_cannot_reach_write_tools(self):
+        calls = []
+        def run(argv, **kw):
+            calls.append((argv, kw))
+            return subprocess.CompletedProcess(argv, 0, stdout="answer", stderr="")
+        core.update_config(self.root, lambda c: c.update(primary_assistant="claude"))
+        self.assertEqual(runners.ask(self.root, self.config(), "q?", run=run), "answer")
+        argv, kw = calls[0]
+        self.assertEqual(argv[argv.index("--permission-mode") + 1], "dontAsk")
+        self.assertEqual(kw["input"], "q?")
+        self.assertNotIn("q?", argv)
+
+    def test_slot_rechecked_after_lock(self):
+        from contextlib import contextmanager
+        real = runners.single_instance
+        @contextmanager
+        def finishes_first(root, rid):
+            runners._save(self.root, rid, "2026-10-20 22:00", {"status": "ok"})  # another run finished meanwhile
+            with real(root, rid) as acquired:
+                yield acquired
+        calls = []
+        runners.single_instance = finishes_first
+        try:
+            record = runners.run(self.root, "nightly-report", now=datetime(2026, 10, 20, 22, 1), popen=FakeProc(calls=calls))
+        finally:
+            runners.single_instance = real
+        self.assertEqual(record["status"], "skipped-done")
+        self.assertEqual(calls, [])
+
+    def test_failed_maintain_is_recorded(self):
+        from unittest import mock
+        with mock.patch.object(runners.maintain, "run", side_effect=ValueError("bad rules")):
+            record = runners.run(self.root, "maintain", now=datetime(2026, 10, 20, 21, 46))
+        self.assertEqual(record["status"], "failed")
+        self.assertIn("bad rules", record["error"])
+
+    def test_windows_resolves_cmd_shims(self):
+        from unittest import mock
+        with mock.patch.object(runners.shutil, "which", return_value="C:\\npm\\codex.cmd"):
+            self.assertEqual(runners.resolve(["codex", "exec"])[0], "C:\\npm\\codex.cmd")
 
 
 if __name__ == "__main__":

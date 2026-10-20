@@ -102,6 +102,14 @@ class RenderTests(unittest.TestCase):
             self.skipTest("not a git checkout")
         self.assertEqual(listed.stdout.strip(), "")
 
+    def test_existing_claude_skills_dir_not_overwritten(self):
+        own = self.root / ".claude/skills/daily/SKILL.md"
+        own.parent.mkdir(parents=True)
+        own.write_text("my own daily skill")
+        render.apply(self.root, FULL)
+        self.assertEqual(own.read_text(), "my own daily skill")
+        self.assertTrue((self.root / ".claude/skills/finance/SKILL.md").is_file())
+
 
 if __name__ == "__main__":
     unittest.main()

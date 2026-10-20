@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import signal
 from string import Template
 import subprocess
@@ -83,16 +84,29 @@ def command(root, config, runner_id):
     return agent_argv(root, able[0], items, RUNNERS[runner_id].get("web", False)), able[0]
 
 
+def claude_lockdown(builtins, mcp_tools):
+    """Only these tools exist or are allowed; anything else is denied without asking, whatever the
+    user's own permission mode. --allowedTools alone would only pre-approve, not restrict."""
+    return ["--permission-mode", "dontAsk", "--tools", ",".join(builtins),
+            "--allowedTools", ",".join(builtins + list(mcp_tools)),
+            "--disallowedTools", "Bash,Edit,Write,NotebookEdit"]
+
+
+def resolve(argv):
+    """Full path for the assistant CLI (finds Windows .cmd shims that Popen would miss)."""
+    found = shutil.which(argv[0])
+    return [found] + list(argv[1:]) if found else list(argv)
+
+
 def agent_argv(root, assistant, items=(), web=False):
     """Read-only assistant command limited to the read tools of `items`. The prompt goes on stdin."""
     if assistant == "claude":
-        tools = ["Read", "Glob", "Grep"] + [connections.tool_name(i, t) for i in items for t in i["read_tools"]]
-        if web:
-            tools += ["WebSearch", "WebFetch"]
-        argv = ["claude", "-p", "--output-format", "text", "--max-turns", "40"]
+        builtins = ["Read", "Glob", "Grep"] + (["WebSearch", "WebFetch"] if web else [])
+        mcp = [connections.tool_name(i, t) for i in items for t in i["read_tools"]]
+        argv = ["claude", "-p", "--output-format", "text", "--max-turns", "40"] + claude_lockdown(builtins, mcp)
         if any(connections.claude_server(i) for i in items):
-            argv += ["--mcp-config", str(Path(root) / ".mcp.json")]
-        return argv + ["--allowedTools"] + tools
+            argv += ["--mcp-config=" + str(Path(root) / ".mcp.json")]
+        return argv
     argv = ["codex", "exec", "--ephemeral", "--skip-git-repo-check", "--cd", str(root), "--sandbox", "read-only",
             "-c", "features.apps=" + ("true" if any(i["server"]["type"] == "account" for i in items) else "false"),
             "-c", "features.plugins=false", "-c", "features.browser_use=false", "-c", "features.computer_use=false"]
@@ -116,7 +130,7 @@ def ask(root, config, text, run=subprocess.run, timeout=600):
         os.close(fd)
         argv += ["--output-last-message", out]
     try:
-        result = run(argv, input=text, cwd=str(root), env=connections.env(root), capture_output=True, text=True, timeout=timeout)
+        result = run(resolve(argv), input=text, cwd=str(root), env=connections.env(root), capture_output=True, text=True, timeout=timeout)
         answer = (Path(out).read_text(encoding="utf-8") if out else "") or result.stdout
     except FileNotFoundError:
         raise ValueError(assistant + " is not installed")
@@ -216,9 +230,14 @@ def run(root, runner_id, now=None, popen=subprocess.Popen, timeout=900, force=Fa
     with single_instance(root, runner_id) as acquired:
         if not acquired:
             return {"status": "skipped-locked", "slot": key}
+        if not force and _status(root).get(runner_id, {}).get("slots", {}).get(key) == "ok":
+            return {"status": "skipped-done", "slot": key}  # another run finished while we waited
         record = {"slot": key, "started_at": core.timestamp()}
         if RUNNERS[runner_id]["kind"] == "local":
-            record["report"] = str(maintain.run(root, now.date()))
+            try:
+                record["report"] = str(maintain.run(root, now.date()))
+            except (ValueError, OSError) as exc:
+                return _save(root, runner_id, key, dict(record, status="failed", error=str(exc)[:300]))
             return _save(root, runner_id, key, dict(record, status="ok", finished_at=core.timestamp()))
         snapshot = core.report(root, 7)  # saved first, so a failed agent still leaves a report
         record["snapshot"] = str(snapshot)
@@ -238,7 +257,7 @@ def run(root, runner_id, now=None, popen=subprocess.Popen, timeout=900, force=Fa
         try:
             with log.open("wb") as stream:
                 try:
-                    process = popen(argv, cwd=str(root), env=connections.env(root), stdin=subprocess.PIPE,
+                    process = popen(resolve(argv), cwd=str(root), env=connections.env(root), stdin=subprocess.PIPE,
                                     stdout=stream, stderr=subprocess.STDOUT, start_new_session=os.name != "nt")
                 except FileNotFoundError:
                     return _save(root, runner_id, key, dict(record, status="unavailable", error=assistant + " not installed"))

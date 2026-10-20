@@ -163,6 +163,44 @@ class TelegramTests(unittest.TestCase):
         self.assertEqual((tg["enabled"], tg["reply_domains"]), (True, ["career", "work"]))
         self.assertNotIn("owner", tg)
 
+    def test_stale_queued_task_expires_instead_of_running(self):
+        queue = telegram.Queue(self.root)
+        task = queue.add("run", "maintain")
+        queue.db.execute("UPDATE tasks SET created = ? WHERE id = ?", (0, task))
+        queue.db.commit()
+        api = FakeApi()
+        rounds = iter([False, True])
+        telegram.work(self.root, api, stop=lambda: next(rounds))
+        self.assertEqual(queue.recent(1)[0]["state"], "expired")
+        self.assertIn("expired", api.calls[0][1]["text"])
+
+    def test_running_tasks_reset_on_startup(self):
+        queue = telegram.Queue(self.root)
+        task = queue.add("run", "maintain")
+        queue.set_state(task, "running")
+        telegram.recover(queue)
+        self.assertEqual(queue.recent(1)[0]["state"], "failed")
+
+    def test_worker_survives_unexpected_error(self):
+        from unittest import mock
+        queue = telegram.Queue(self.root)
+        queue.add("run", "maintain")
+        rounds = iter([False, True])
+        with mock.patch.object(telegram.runners, "run", side_effect=KeyError("boom")):
+            telegram.work(self.root, FakeApi(), stop=lambda: next(rounds))
+        self.assertEqual(queue.recent(1)[0]["state"], "failed")
+
+    def test_notification_kept_when_send_fails(self):
+        status = {"learn": {"last": {"status": "ok", "finished_at": "2026-10-20T19:05:00+00:00"}}}
+        (self.root / ".local/runners").mkdir(parents=True, exist_ok=True)
+        (self.root / ".local/runners/status.json").write_text(json.dumps(status))
+        def failing(text):
+            raise telegram.TelegramError("network")
+        telegram.send_notifications(self.root, self.config(), failing)
+        sent = []
+        telegram.send_notifications(self.root, self.config(), sent.append)
+        self.assertEqual(len(sent), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

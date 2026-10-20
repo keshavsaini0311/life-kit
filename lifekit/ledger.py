@@ -62,8 +62,13 @@ def _amount(text):
 
 def parse_csv(path):
     """Return (rows, errors). Any error means the whole file is left for review."""
-    with open(path, newline="", encoding="utf-8-sig") as stream:
-        table = list(csv.reader(stream))
+    try:
+        with open(path, newline="", encoding="utf-8-sig") as stream:
+            table = list(csv.reader(stream))
+    except UnicodeDecodeError:
+        return [], ["not UTF-8 text; re-export the statement as CSV (UTF-8)"]
+    except csv.Error as exc:
+        return [], ["unreadable CSV: " + str(exc)]
     for index, header in enumerate(table):
         columns = _columns(header)
         if columns:
@@ -125,6 +130,7 @@ def import_inbox(root):
             key = hashlib.sha256(json.dumps(base + [seen[tuple(base)]]).encode()).hexdigest()[:24]
             pending.setdefault(key, dict(row, debit=format(row["debit"], ".2f"),
                                          credit=format(row["credit"], ".2f") if row["credit"] else None))
+        core.private_write(root / PENDING, core.json_text(pending))  # saved before the file leaves the inbox
         done = inbox / "processed"
         done.mkdir(exist_ok=True)
         target = done / path.name

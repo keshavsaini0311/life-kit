@@ -4,7 +4,6 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import shutil
 from string import Template
 
 from . import core, questions
@@ -95,17 +94,22 @@ def skills_for(domains):
     return names
 
 
-def _link_claude_skills(root):
+def _link_claude_skills(root, rendered, put):
     link = Path(root) / ".claude/skills"
-    if link.exists() or link.is_symlink():
-        if not link.is_symlink():  # copy fallback from a system without symlinks: refresh it
-            shutil.copytree(str(Path(root) / ".agents/skills"), str(link), dirs_exist_ok=True)
+    if link.is_symlink():
         return
-    link.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        os.symlink(os.path.join("..", ".agents", "skills"), str(link), target_is_directory=True)
-    except OSError:  # e.g. Windows without developer mode
-        shutil.copytree(str(Path(root) / ".agents/skills"), str(link))
+    if not link.exists():
+        link.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            os.symlink(os.path.join("..", ".agents", "skills"), str(link), target_is_directory=True)
+            return
+        except OSError:  # e.g. Windows without developer mode: keep a copy instead
+            pass
+    # A real folder (copy fallback, or the user's own skills): copy file by file, never over edits.
+    source = Path(root) / ".agents/skills"
+    for path in sorted(source.rglob("*")):
+        if path.is_file():
+            put(".claude/skills/" + path.relative_to(source).as_posix(), path.read_text(encoding="utf-8"))
 
 
 def apply(root, answers):
@@ -135,6 +139,6 @@ def apply(root, answers):
             if source.is_file():
                 rel = ".agents/skills/" + name + "/" + source.relative_to(TEMPLATES / "skills" / name).as_posix()
                 put(rel, Template(source.read_text(encoding="utf-8")).substitute(mapping))
-    _link_claude_skills(root)
+    _link_claude_skills(root, rendered, put)
     core.private_write(record, core.json_text(rendered))
     return written

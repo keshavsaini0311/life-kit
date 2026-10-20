@@ -179,11 +179,12 @@ def verify(root, conn_id, assistant=None, run=subprocess.run, timeout=180):
     answer, output = None, None
     try:
         if assistant == "claude":
-            argv = ["claude", "-p", "--output-format", "json", "--max-turns", "3",
-                    "--allowedTools", tool_name(item, item["verify"]["tool"])]
+            from .runners import claude_lockdown, resolve
+            argv = ["claude", "-p", "--output-format", "json", "--max-turns", "3"]
+            argv += claude_lockdown([], [tool_name(item, item["verify"]["tool"])])
             if claude_server(item) and (root / ".mcp.json").is_file():
-                argv += ["--mcp-config", str(root / ".mcp.json")]
-            result = run(argv + [prompt], cwd=str(root), env=env(root), capture_output=True, text=True, timeout=timeout)
+                argv += ["--mcp-config=" + str(root / ".mcp.json")]
+            result = run(resolve(argv), input=prompt, cwd=str(root), env=env(root), capture_output=True, text=True, timeout=timeout)
             if result.returncode == 0:
                 answer = str(json.loads(result.stdout).get("result", ""))
         else:
@@ -191,8 +192,9 @@ def verify(root, conn_id, assistant=None, run=subprocess.run, timeout=180):
             os.close(fd)
             argv = ["codex", "exec", "--ephemeral", "--skip-git-repo-check", "--cd", str(root), "--sandbox", "read-only",
                     "-c", "features.apps=" + ("true" if item["server"]["type"] == "account" else "false")]
-            argv += codex_overrides(item) + ["--output-last-message", output, prompt]
-            result = run(argv, cwd=str(root), env=env(root), capture_output=True, text=True, timeout=timeout)
+            from .runners import resolve
+            argv += codex_overrides(item) + ["--output-last-message", output]
+            result = run(resolve(argv), input=prompt, cwd=str(root), env=env(root), capture_output=True, text=True, timeout=timeout)
             if result.returncode == 0:
                 answer = Path(output).read_text(encoding="utf-8")
     except FileNotFoundError:

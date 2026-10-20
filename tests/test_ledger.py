@@ -125,6 +125,15 @@ class LedgerTests(unittest.TestCase):
         self.assertIn("USD 2.00", text)
         self.assertNotIn("12.00", text)
 
+    def test_bad_encoding_file_reported_and_other_rows_kept(self):
+        self.drop("a.csv", HDFC_STYLE)
+        (self.root / "finance/inbox/b.csv").write_bytes("Date,Narration,Withdrawal,Deposit\n01/10/26,Caf\xe9,10,\n".encode("latin-1"))
+        result = ledger.import_inbox(self.root)
+        self.assertTrue(any("b.csv" in e for e in result["errors"]))
+        self.assertTrue((self.root / "finance/inbox/b.csv").exists())
+        self.assertIn("UNKNOWN SHOP", (self.root / "finance/imports/review.md").read_text())
+        self.assertEqual(len(self.spends()), 1)
+
 
 def event(kind, days_ago, **fields):
     at = (datetime.now(timezone.utc) - timedelta(days=days_ago)).isoformat()

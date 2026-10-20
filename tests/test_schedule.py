@@ -127,6 +127,30 @@ class ScheduleTests(unittest.TestCase):
         self.assertFalse(config["runners"]["learn"]["enabled"])
         self.assertTrue(config["runners"]["nightly-report"]["enabled"])
 
+    def test_schtasks_quotes_path_with_spaces(self):
+        job = dict(self.jobs()[0], root="C:\\Users\\Jane Doe\\life")
+        command = next(a["command"] for a in schedule.plan([job], "win32", self.home) if a.get("command"))
+        tr = command[command.index("/TR") + 1]
+        self.assertTrue(tr.startswith('"') and tr.endswith('"'), tr)
+
+    def test_windows_keepalive_uses_startup_folder_not_admin_task(self):
+        job = dict(self.jobs()[0], runner="telegram", keepalive=True, root=str(self.root))
+        actions = schedule.plan([job], "win32", self.home)
+        self.assertFalse(any(a.get("command") for a in actions))
+        self.assertTrue(any("Startup" in str(a.get("path", "")) for a in actions))
+
+    def test_rerun_setup_keeps_schedule_edits(self):
+        from lifekit import wizard
+        root = Path(self.temp.name) / "fresh"
+        wizard.run(root, io=Quiet(), interactive=False, answers={
+            "basics.currency": "USD", "domains.enabled": ["career"], "runners.selected": ["nightly-report", "job-discovery"]})
+        schedule.set_runner(root, "job-discovery", "07:15", "weekdays")
+        schedule.set_runner(root, "nightly-report", "22:00", "daily", enabled=False)
+        wizard.run(root, io=Quiet(), interactive=False)
+        config = core.load(root)[1]
+        self.assertEqual(config["runners"]["job-discovery"]["times"], ["07:15"])
+        self.assertFalse(config["runners"]["nightly-report"]["enabled"])
+
 
 if __name__ == "__main__":
     unittest.main()

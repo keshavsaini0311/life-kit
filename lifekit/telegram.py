@@ -235,13 +235,20 @@ def setup(root, io, api_factory=Api):
 
 
 def pending_notifications(root, config):
-    """One message per scheduled run finished since the last check, for runners in telegram.notify."""
+    """Notifications due now, marked as sent (used by tests and by callers that send themselves)."""
+    out = []
+    send_notifications(root, config, out.append)
+    return out
+
+
+def send_notifications(root, config, send):
+    """One message per scheduled run finished since the last check, for runners in telegram.notify.
+    A run is marked notified only after `send` succeeds, so a network failure retries next loop."""
     path = Path(root) / runners.STATE / "status.json"
     status = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
     queue = Queue(root)
     seen = json.loads(queue.setting("notified") or "{}")
     wanted = (config.get("telegram") or {}).get("notify")
-    messages = []
     for rid, entry in status.items():
         last = entry.get("last") or {}
         stamp = last.get("finished_at") or last.get("started_at")
@@ -250,10 +257,12 @@ def pending_notifications(root, config):
         content = ""
         if last.get("report") and Path(last["report"]).is_file():
             content = Path(last["report"]).read_text(encoding="utf-8")
-        messages.append(reply_text(config, runner_domains(rid), content, rid + ": " + last.get("status", "unknown")))
+        try:
+            send(reply_text(config, runner_domains(rid), content, rid + ": " + last.get("status", "unknown")))
+        except TelegramError:
+            break
         seen[rid] = stamp
-    queue.setting("notified", json.dumps(seen))
-    return messages
+        queue.setting("notified", json.dumps(seen))
 
 
 def _ask(root, config, text):
@@ -268,6 +277,12 @@ def _ask(root, config, text):
     return domains, output
 
 
+def recover(queue):
+    """After a crash or restart, tasks left 'running' did not finish."""
+    with queue.lock, queue.db:
+        queue.db.execute("UPDATE tasks SET state = 'failed', result = 'interrupted' WHERE state = 'running'")
+
+
 def work(root, api, stop):
     """Worker thread: run queued tasks one at a time and reply within the privacy rule."""
     queue = Queue(root)
@@ -276,9 +291,16 @@ def work(root, api, stop):
         if not task:
             time.sleep(2)
             continue
-        queue.set_state(task["id"], "running")
         _, config = core.load(root)
         chat = config["telegram"]["owner"]["chat_id"]
+        if time.time() - task["created"] > MAX_AGE:  # queued while the computer slept: don't surprise anyone
+            queue.set_state(task["id"], "expired")
+            try:
+                api.call("sendMessage", chat_id=chat, text="Task " + str(task["id"]) + " expired before it could run. Send it again if you still want it.")
+            except TelegramError:
+                pass
+            continue
+        queue.set_state(task["id"], "running")
         try:
             if task["kind"] == "run":
                 record = runners.run(root, task["arg"], force=True)
@@ -289,8 +311,8 @@ def work(root, api, stop):
                 domains, output = _ask(root, config, task["arg"])
                 text = reply_text(config, domains, output, "Task " + str(task["id"]) + " answered")
                 state = "ok"
-        except (ValueError, OSError) as exc:
-            text, state = "Task " + str(task["id"]) + " failed: " + str(exc)[:200], "failed"
+        except Exception as exc:  # the worker must outlive any one task
+            text, state = "Task " + str(task["id"]) + " failed: " + type(exc).__name__ + " " + str(exc)[:200], "failed"
         queue.set_state(task["id"], state)
         try:
             api.call("sendMessage", chat_id=chat, text=text)
@@ -308,6 +330,7 @@ def run(root, api=None, stop=lambda: False):
         if not acquired:
             raise ValueError("Another Telegram service is already running for this workspace.")
         queue = Queue(root)
+        recover(queue)
         threading.Thread(target=work, args=(root, api, stop), daemon=True).start()
         offset = int(queue.setting("offset") or 0)
         while not stop():
@@ -319,11 +342,14 @@ def run(root, api=None, stop=lambda: False):
                     raise ValueError("Telegram rejected the bot token. Run `life-kit telegram setup` again.")
                 time.sleep(15)
                 continue
+            chat = config["telegram"]["owner"]["chat_id"]
             for update in updates:
                 offset = update["update_id"] + 1
                 queue.setting("offset", offset)
                 reply = handle(root, config, update.get("message") or {})
                 if reply:
-                    api.call("sendMessage", chat_id=config["telegram"]["owner"]["chat_id"], text=reply)
-            for text in pending_notifications(root, config):
-                api.call("sendMessage", chat_id=config["telegram"]["owner"]["chat_id"], text=text)
+                    try:
+                        api.call("sendMessage", chat_id=chat, text=reply)
+                    except TelegramError:
+                        pass  # the command itself was handled; only the acknowledgement was lost
+            send_notifications(root, config, lambda text: api.call("sendMessage", chat_id=chat, text=text))

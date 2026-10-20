@@ -123,6 +123,15 @@ class ConnectionTests(unittest.TestCase):
                          "https://kb.example.com/mcp")
         self.assertEqual(connections.entry(self.root, "team-kb")["verify"]["tool"], "search")
 
+    def test_verify_sends_prompt_on_stdin_with_locked_permissions(self):
+        connections.write_configs(self.root, ["github"])
+        calls = []
+        connections.verify(self.root, "github", "claude", run=fake_run(json.dumps({"result": "OK"}), capture=calls))
+        argv, kwargs = calls[0]
+        self.assertIn("Call the MCP tool", kwargs["input"])
+        self.assertFalse(any("Call the MCP tool" in a for a in argv))
+        self.assertEqual(argv[argv.index("--permission-mode") + 1], "dontAsk")
+
 
 if __name__ == "__main__":
     unittest.main()
