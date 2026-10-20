@@ -13,3 +13,9 @@ Local setup does not authorize messages, applications, purchases or publishing.
 Connectors are optional and must distinguish configuration, authentication and a
 verified live read. No account is connected by default. Do not copy private data
 or configuration into this repository, even for fixtures or screenshots.
+
+Templates in lifekit/templates/ (skills, context files, runner prompts) are public: write them
+generically, with no names, employers, amounts, paths or accounts from anyone's real workspace.
+Template text uses string.Template, so a literal dollar sign is written $$. After changing
+lifekit/questions.py, regenerate the guide: python3 -m lifekit guide > docs/setup-guide.md.
+Runners, verification and Telegram must stay read-only and must never send, submit or buy.

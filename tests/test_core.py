@@ -167,5 +167,61 @@ class WorkspaceTests(unittest.TestCase):
         self.assertNotIn("Traceback", result.stderr)
 
 
+class ConfigSchemaTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = core.init(Path(self.temp.name) / "private", "USD")
+
+    def config(self):
+        return json.loads((self.root / "life.json").read_text())
+
+    def make_v1(self):
+        config = self.config()
+        config["schema_version"] = 1
+        (self.root / "life.json").write_text(json.dumps(config))
+
+    def test_init_writes_v2(self):
+        self.assertEqual(self.config()["schema_version"], 2)
+
+    def test_load_accepts_v1(self):
+        self.make_v1()
+        core.checkin(self.root, prep=5)
+        self.assertEqual(core.load(self.root)[1]["schema_version"], 1)
+
+    def test_migrate_v1_to_v2_keeps_backup(self):
+        self.make_v1()
+        original = (self.root / "life.json").read_text()
+        backup = core.migrate(self.root)
+        self.assertEqual(backup.read_text(), original)
+        self.assertEqual(self.config()["schema_version"], 2)
+        with self.assertRaises(ValueError):
+            core.migrate(self.root)
+
+    def test_update_config_atomic(self):
+        before = (self.root / "life.json").read_text()
+        def broken(config):
+            config["domains"] = ["finance"]
+            raise RuntimeError("boom")
+        with self.assertRaises(RuntimeError):
+            core.update_config(self.root, broken)
+        self.assertEqual((self.root / "life.json").read_text(), before)
+        core.update_config(self.root, lambda c: c.update(domains=["finance"]))
+        self.assertEqual(self.config()["domains"], ["finance"])
+
+    def test_update_config_cannot_weaken_privacy(self):
+        before = (self.root / "life.json").read_text()
+        with self.assertRaises(ValueError):
+            core.update_config(self.root, lambda c: c.update(privacy={"reports": "remote"}))
+        self.assertEqual((self.root / "life.json").read_text(), before)
+
+    def test_load_rejects_v3(self):
+        config = self.config()
+        config["schema_version"] = 3
+        (self.root / "life.json").write_text(json.dumps(config))
+        with self.assertRaises(ValueError):
+            core.load(self.root)
+
+
 if __name__ == "__main__":
     unittest.main()

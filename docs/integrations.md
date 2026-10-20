@@ -1,38 +1,30 @@
 # Optional connections
 
-The v0.1 core makes no network calls. Connect your own accounts in your assistant
-client, then verify one suitable read. Never copy someone else's OAuth/browser
-session or private MCP config. Configuration is not authentication or a live read.
+Pick connections during setup, or later with `life-kit connect add ID`. Never copy someone
+else's OAuth/browser session or private MCP config. Configured is not authenticated, and
+neither is a live read: `life-kit connect verify ID` runs your assistant once with only that
+connection's verify tool allowed, and records `configured`, `authenticated`,
+`last_read_at` and `status` in `.local/connections.json`.
 
-| Need | Optional connection | First verification |
-|---|---|---|
-| Follow-up review | Email connector | Inspect a thread and latest sender |
-| Time planning | Calendar connector | List accessible calendars |
-| Work brief | GitHub CLI and chosen work connectors | Read a permitted PR/task |
-| Investment marks | Official broker connector | Read holdings with trading disabled |
-| Shopping assistance | Official delivery-provider MCP | Read saved addresses or orders |
-| Mobile commands | Separate owner-paired adapter | Owner identity and generic status |
+| ID | Service | Kind | Log in | Unattended via |
+|---|---|---|---|---|
+| gmail, google-calendar, google-drive, slack | Google, Slack | claude.ai connector | claude.ai → Settings → Connectors | Claude |
+| github | GitHub (read-only endpoint) | official MCP | fine-grained token, typed hidden | Claude, Codex |
+| clickup, notion, linear | Work tools | official MCP | `/mcp` in Claude Code, `codex mcp login ID` | Claude, Codex |
+| signoz | SigNoz | official MCP (stdio) | URL + API key, typed hidden | Claude, Codex |
+| kite | Zerodha Kite | official MCP | `login` tool → Zerodha page; expires daily | Claude, Codex |
+| zepto, swiggy-instamart, swiggy-food, zomato | Food and grocery (India) | official MCP | OAuth with phone + OTP | Claude, Codex |
+| linkedin | LinkedIn | community MCP | per its README; ToS risk | Claude |
+| custom | Your own server | any | `connect add-custom ID --url URL --read-tools a,b` | either |
 
-These are implementation paths, not bundled adapters or compatibility guarantees.
-Account, region, terms and client support vary.
+Every scheduled job gets only the read tools listed in `lifekit/catalog.py`. Write tools such as
+send, cart, checkout, order, trading and ticket edits are left out. Provider tool names change, so each
+entry records its documentation link. Check it when something stops working.
 
-The official Codex documentation shows a public documentation-only MCP connection:
-
-```sh
-codex mcp add openaiDeveloperDocs --url https://developers.openai.com/mcp
-codex mcp list
-```
-
-This is optional and doesn't connect personal accounts. See
-[official MCP setup](https://developers.openai.com/learn/docs-mcp) and
-[project instruction guidance](https://developers.openai.com/cookbook/examples/codex/iterating-development-workflows-with-codex).
-
-Provider-maintained starting points for future adapters:
-[Zepto](https://github.com/zeptonow/mcp),
-[Zomato](https://github.com/Zomato/mcp-server-manifest),
-[Swiggy](https://mcp.swiggy.com/builders/docs/reference/instamart/).
-Recheck tool names, endpoints, permissions and terms when implementing an adapter.
-These region-specific providers are examples, not required dependencies.
+`life-kit open claude|codex` starts your assistant in the workspace with your stored secrets
+in its environment. For Codex it also passes your connections as `-c` overrides, so they work
+without trusting the project config. For your own terminal, `.local/env.sh` exports the same
+variables. Keep that file private.
 
 ## Adapter contract
 

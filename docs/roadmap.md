@@ -1,20 +1,16 @@
-# Improvements, in order
+# Roadmap
 
-These are future work, not completed features.
+Done in 0.2: guided setup with explained questions, shared Claude/Codex skills, connection
+catalog with verified reads, automatic ledger and learning, scheduled jobs on macOS/Linux/
+Windows, and an owner-paired Telegram channel.
 
-1. Guided onboarding: preferences, goals, time, currency and one successful report.
-   Validate with people on fresh machines.
-2. Connection health: account identity, freshness, expiry, coverage and recovery.
-3. Reliable scheduled reports: bounded retries, overlap control and generic notices.
-4. One complete portable connector: inbox or calendar first, with expiry and tests;
-   then work, broker and shopping adapters as demand justifies them.
-5. Better evidence: correction events, actual resume variants, action cohorts and
-   follow-up dates, with no invented historical attribution.
-6. Convenient capture: receipts/CSV candidates with exact units, dates, refunds and
-   transfer handling before changing spending or balances.
-7. Local dashboard: freshness and next actions, with missing inputs visibly unknown.
-8. Optional mobile adapter: owner pairing, cancellation, retries and scoped replies.
+Next, in order:
 
-Before broad release: validate Linux/Windows/macOS in CI, test backup/restore and
-migrations, and have new users complete setup without the author present. Hosted
-multi-user accounts and autonomous purchasing are separate scope.
+1. Validate setup with people on fresh macOS, Linux and Windows machines, without the author.
+2. Month-first (US) bank CSV dates and multi-account statement mapping.
+3. Correction events for the log (fix a mistaken entry without rewriting history).
+4. Job outputs that write drafts into `career/job-search/drafts/` under an explicit opt-in.
+5. Local dashboard: freshness and next actions, with missing inputs visibly unknown.
+6. Opt-in sending flows (email/LinkedIn) with per-message confirmation. Out of v1 by design.
+
+Hosted multi-user accounts and autonomous purchasing are separate scope.

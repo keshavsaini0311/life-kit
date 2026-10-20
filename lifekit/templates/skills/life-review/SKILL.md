@@ -3,9 +3,9 @@ name: life-review
 description: Review an initialized Life Kit workspace and suggest realistic next actions from the user's context and logged observations. Use for a daily or weekly review, not account setup or external actions.
 ---
 
-Ask for the workspace path if it wasn't supplied. Read its AGENTS.md, personal/rules.md
+The workspace is $workspace. Read its AGENTS.md, personal/rules.md
 and life.json, then only relevant domain context. Run installed
-`life-kit --workspace PATH status` or `python -m lifekit --workspace PATH status` from
+`life-kit --workspace $workspace status` or `python3 -m lifekit --workspace $workspace status` from
 the source checkout. If unavailable, review only supplied files and say so.
 
 Check dates before treating context as current. Use explicit observations for numbers.
@@ -22,4 +22,4 @@ history to improve metrics.
 A review doesn't authorize external messages, applications, purchases or account
 changes. Reports stay local under the starter policy. Don't send private reports to
 notifications. Configuration isn't authentication: identify a verified read before
-using connector data. See ../../docs/integrations.md when connection scope matters.
+using connector data. Check `.local/connections.json` when connection scope matters.
