@@ -19,9 +19,9 @@ from . import core, runners
 
 MAX_AGE = 30 * 60
 PAIRING_SECONDS = 300
-ALL_DOMAINS = ["personal", "finance", "career", "work"]
+ALL_DOMAINS = ["personal", "finance", "learning", "work"]
 HELP = ("/status — recent tasks\n/report — run tonight's review now\n/checkin sleep=7 gym=yes prep=30\n"
-        "/spend AMOUNT CATEGORY [note]\n/outcome ACTION_ID STAGE [evidence]\n/ask [career|work|personal|finance] question\n"
+        "/spend AMOUNT CATEGORY [note]\n/outcome ACTION_ID STAGE [evidence]\n/ask [learning|work|personal|finance] question\n"
         "/cancel TASK_ID\n{runners}")
 
 
@@ -173,7 +173,7 @@ def handle(root, config, message, now=None):
             return "Queued task " + str(queue.add("run", "nightly-report")) + ": nightly-report."
         if word == "/ask":
             if not rest:
-                return "Use: /ask [career|work|personal|finance] your question"
+                return "Use: /ask [learning|work|personal|finance] your question"
             return "Queued task " + str(queue.add("ask", rest)) + "."
         for rid in ready:
             if word == command_name(rid):
@@ -203,7 +203,7 @@ def pair_from_updates(root, updates, pending, now=None):
             def change(config):
                 tg = config.setdefault("telegram", {})
                 tg.update(enabled=True, owner=owner)
-                tg.setdefault("reply_domains", ["career"])
+                tg.setdefault("reply_domains", ["learning"])
             core.update_config(root, change)
             return owner
     return None

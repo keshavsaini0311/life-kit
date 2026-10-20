@@ -45,7 +45,7 @@ class RunnerTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = core.init(Path(self.temp.name) / "w", "USD")
-        core.update_config(self.root, lambda c: c.update(domains=["career", "work", "finance"],
+        core.update_config(self.root, lambda c: c.update(domains=["learning", "work", "finance"],
                                                          assistants=["claude", "codex"], primary_assistant="codex"))
 
     def config(self):
@@ -54,12 +54,12 @@ class RunnerTests(unittest.TestCase):
     def test_available_filters_by_domain_and_connection(self):
         ids = runners.available(self.config())
         self.assertIn("nightly-report", ids)
-        self.assertIn("job-discovery", ids)
+        self.assertIn("learn", ids)
         self.assertNotIn("inbox-review", ids)  # needs gmail
         connections.write_configs(self.root, ["gmail"])
         self.assertIn("inbox-review", runners.available(self.config()))
         core.update_config(self.root, lambda c: c.update(domains=[]))
-        self.assertNotIn("job-discovery", runners.available(self.config()))
+        self.assertNotIn("work-brief", runners.available(self.config()))
 
     def test_claude_command_allowlist_only_reads(self):
         connections.write_configs(self.root, ["gmail"])

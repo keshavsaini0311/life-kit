@@ -63,7 +63,7 @@ class WizardTests(unittest.TestCase):
         self.assertEqual(self.answers()["basics.currency"], "EUR")
 
     def test_when_hides_finance_questions_if_domain_off(self):
-        answers = {"domains.enabled": ["career"]}
+        answers = {"domains.enabled": ["learning"]}
         self.assertFalse(questions.applies(by_id("finance.income_monthly"), answers))
         answers["domains.enabled"].append("finance")
         self.assertTrue(questions.applies(by_id("finance.income_monthly"), answers))
@@ -137,13 +137,13 @@ class WizardTests(unittest.TestCase):
         wizard.run(self.root, io=FakeIO([""]), only=["basics.currency", "basics.name"], answers={"basics.currency": "USD"})
         self.assertIsNone(self.answers()["basics.name"])
 
-    def test_missing_resume_path_reasks(self):
-        real = Path(self.temp.name) / "cv.pdf"
-        real.write_text("cv")
-        io = FakeIO(["/no/such/cv.pdf", str(real)])
-        wizard.run(self.root, io=io, only=["basics.currency", "domains.enabled", "career.resume_path"],
-                   answers={"basics.currency": "USD", "domains.enabled": ["career"]})
-        self.assertEqual(self.answers()["career.resume_path"], str(real.resolve()))
+    def test_missing_learning_resource_path_reasks(self):
+        real = Path(self.temp.name) / "study-notes.md"
+        real.write_text("study notes")
+        io = FakeIO(["/no/such/study-notes.md", str(real)])
+        wizard.run(self.root, io=io, only=["basics.currency", "domains.enabled", "learning.resources_path"],
+                   answers={"basics.currency": "USD", "domains.enabled": ["learning"]})
+        self.assertEqual(self.answers()["learning.resources_path"], str(real.resolve()))
         self.assertTrue(any("No file" in s for s in io.shown))
 
     def test_timezone_accepted_without_tz_database(self):

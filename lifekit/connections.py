@@ -83,7 +83,10 @@ def tool_name(item, tool):
 
 
 def enabled(root):
-    return list((core.load(root)[1].get("connections") or {}).keys())
+    configured = core.load(root)[1].get("connections") or {}
+    known = {item["id"] for item in catalog.CONNECTIONS}
+    # Old catalog-only entries remain in the user's config but are not activated.
+    return [name for name, saved in configured.items() if name in known or saved.get("server")]
 
 
 def env(root):

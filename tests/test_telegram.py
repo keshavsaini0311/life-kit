@@ -41,7 +41,7 @@ class TelegramTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = core.init(Path(self.temp.name) / "w", "USD")
         core.update_config(self.root, lambda c: c.update(
-            domains=["career", "finance"], telegram={"enabled": True, "owner": OWNER, "reply_domains": ["career"]}))
+            domains=["learning", "finance"], telegram={"enabled": True, "owner": OWNER, "reply_domains": ["learning"]}))
 
     def config(self):
         return core.load(self.root)[1]
@@ -76,10 +76,10 @@ class TelegramTests(unittest.TestCase):
         self.assertEqual(core.events(self.root), [])
 
     def test_runner_command_queues_task(self):
-        reply = self.handle("/job_discovery")
+        reply = self.handle("/learn")
         self.assertIn("queued", reply.lower())
         task = telegram.Queue(self.root).next()
-        self.assertEqual((task["kind"], task["arg"]), ("run", "job-discovery"))
+        self.assertEqual((task["kind"], task["arg"]), ("run", "learn"))
 
     def test_cancel_queued(self):
         self.handle("/report")
@@ -92,12 +92,12 @@ class TelegramTests(unittest.TestCase):
         self.assertNotIn("5000", text)
         self.assertIn("saved on your computer", text)
 
-    def test_career_reply_has_content(self):
-        text = telegram.reply_text(self.config(), ["career"], "Role at Example Co", "job-discovery: ok")
-        self.assertIn("Role at Example Co", text)
+    def test_learning_reply_has_content(self):
+        text = telegram.reply_text(self.config(), ["learning"], "Study session review", "learn: ok")
+        self.assertIn("Study session review", text)
 
     def test_mixed_domains_status_only(self):
-        text = telegram.reply_text(self.config(), ["career", "personal"], "secret stuff", "nightly-report: ok")
+        text = telegram.reply_text(self.config(), ["learning", "personal"], "secret stuff", "nightly-report: ok")
         self.assertNotIn("secret stuff", text)
 
     def test_pairing_code_expires_after_5_min(self):
@@ -132,14 +132,15 @@ class TelegramTests(unittest.TestCase):
         self.assertEqual(ctx.exception.category, "auth")
 
     def test_notifications_for_finished_runs_once(self):
-        status = {"job-discovery": {"last": {"status": "ok", "finished_at": "2026-10-20T08:05:00+00:00",
+        status = {"learn": {"last": {"status": "ok", "finished_at": "2026-10-20T08:05:00+00:00",
                                              "report": str(self.root / "r.md")}}}
-        (self.root / "r.md").write_text("Three roles found")
+        (self.root / "r.md").write_text("Three study sessions recorded")
         (self.root / ".local/runners").mkdir(parents=True, exist_ok=True)
         (self.root / ".local/runners/status.json").write_text(json.dumps(status))
         first = telegram.pending_notifications(self.root, self.config())
         self.assertEqual(len(first), 1)
-        self.assertIn("Three roles found", first[0])
+        self.assertNotIn("Three study sessions recorded", first[0])
+        self.assertIn("Full result saved on your computer", first[0])
         self.assertEqual(telegram.pending_notifications(self.root, self.config()), [])
 
     def test_worker_runs_task_and_replies_status_only(self):
@@ -158,9 +159,9 @@ class TelegramTests(unittest.TestCase):
         from lifekit import wizard
         root = Path(self.temp.name) / "fresh"
         wizard.run(root, io=Quiet(), interactive=False, answers={"basics.currency": "USD", "telegram.enabled": True,
-                                                     "telegram.reply_domains": ["career", "work"]})
+                                                     "telegram.reply_domains": ["learning", "work"]})
         tg = core.load(root)[1]["telegram"]
-        self.assertEqual((tg["enabled"], tg["reply_domains"]), (True, ["career", "work"]))
+        self.assertEqual((tg["enabled"], tg["reply_domains"]), (True, ["learning", "work"]))
         self.assertNotIn("owner", tg)
 
     def test_stale_queued_task_expires_instead_of_running(self):

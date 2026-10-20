@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 import re
 
-DOMAIN_CHOICES = ("personal", "finance", "career", "work")
+DOMAIN_CHOICES = ("personal", "finance", "learning", "work")
 
 SECTIONS = [
     ("basics", "Basics", "Who you are and where your workspace lives. Two minutes."),
@@ -18,7 +18,7 @@ SECTIONS = [
     ("rules", "Rules and routine", "Your boundaries and rhythm. Every assistant reads these before doing anything."),
     ("personal", "Personal context", "A short portrait so suggestions fit your real life."),
     ("finance", "Money", "Numbers are stored with today's date, so nobody mistakes an old number for a current one."),
-    ("career", "Career", "Your current job, where you want to go, and how you prepare."),
+    ("learning", "Learning", "Topics, learning goals and practice time."),
     ("work", "Day job", "Context for standups, tickets and work briefs."),
     ("assistants", "AI assistants", "Which assistant apps should read this workspace. Both can share the same skills."),
     ("plugins", "Claude Code plugins", "Optional add-ons for Claude Code. Pick what you like; none are required."),
@@ -69,7 +69,7 @@ QUESTIONS = [
        default=_detected_timezone),
     _q("domains.enabled", "domains", "Which life areas do you want? (comma-separated numbers or names)",
        "Each area gets its own folder, skills and optional scheduled runs. Unpicked areas stay out of the way.",
-       "personal, finance, career", "Only the core check-in, spending and review commands are set up.", "multi",
+       "personal, finance, learning", "Only the core check-in, spending and review commands are set up.", "multi",
        choices=list(DOMAIN_CHOICES)),
 
     _q("rules.work_hours", "rules", "When are you usually busy with work or study?",
@@ -94,7 +94,7 @@ QUESTIONS = [
        "Gym 4x/week, sleep 7h, call parents on Sundays", SKIP_UNKNOWN, when=_domain("personal"),
        when_text="personal area enabled"),
     _q("personal.routine", "personal", "Describe a normal day in one or two lines.",
-       "Helps assistants place reminders and prep at times that actually work.",
+       "Helps assistants place reminders and study at times that actually work.",
        "Wake 8, office 10-7, gym 8pm, dinner 9:30", SKIP_UNKNOWN, when=_domain("personal"),
        when_text="personal area enabled"),
     _q("personal.notes", "personal", "Anything else an assistant should always remember about you?",
@@ -117,25 +117,18 @@ QUESTIONS = [
        "yes", "No automatic import; log spending by hand or by phone.", "yesno",
        when=_domain("finance"), when_text="finance area enabled"),
 
-    _q("career.current_role", "career", "What is your current role and experience?",
-       "Job search and prep skills tailor to your level.",
-       "Backend engineer, 2 years, Node + Postgres", SKIP_UNKNOWN,
-       when=_domain("career"), when_text="career area enabled"),
-    _q("career.target", "career", "What role and pay are you aiming for, and by when?",
-       "Job discovery filters by this; prep plans work back from the date.",
-       "SDE-2 backend, 30L+, within 6 months", SKIP_UNKNOWN,
-       when=_domain("career"), when_text="career area enabled"),
-    _q("career.locations", "career", "Where can you work?",
-       "Filters job listings.", "Bangalore or remote (India)", "All locations considered.",
-       when=_domain("career"), when_text="career area enabled"),
-    _q("career.resume_path", "career", "Path to your current resume file (PDF or source)?",
-       "Applications record a fingerprint of the exact file used. The file is never uploaded by setup.",
-       "~/Documents/resume.pdf", "Resume-related steps will ask for it when needed.", "path",
-       when=_domain("career"), when_text="career area enabled"),
-    _q("career.prep_topics", "career", "Which interview topics do you want to practise?",
-       "The prep skill builds a plan from these.",
-       "DSA, system design, SQL, behavioural", SKIP_UNKNOWN,
-       when=_domain("career"), when_text="career area enabled"),
+    _q("learning.goals", "learning", "What would you like to learn or improve?",
+       "Learning plans start from your own goals, without assuming a deadline.",
+       "Understand distributed systems and build a small project", SKIP_UNKNOWN,
+       when=_domain("learning"), when_text="learning area enabled"),
+    _q("learning.topics", "learning", "Which topics would you like to practise?",
+       "The study skill uses these to choose a useful next session.",
+       "SQL, system design, writing", SKIP_UNKNOWN,
+       when=_domain("learning"), when_text="learning area enabled"),
+    _q("learning.resources_path", "learning", "Path to learning notes or a resource file?",
+       "An optional reference for study sessions; setup does not upload it.",
+       "~/Documents/study-notes.md", "No reference file; you can add one later.", "path",
+       when=_domain("learning"), when_text="learning area enabled"),
 
     _q("work.employer", "work", "Where do you work, and what is your role?",
        "Standups and work briefs use it. Stays in your private workspace.",
@@ -341,7 +334,7 @@ def _extend_runners():
     QUESTIONS.append(_q("runners.selected", "runners", "Which jobs should run on their own? (comma-separated, or none)",
                         "Each runs at the time you pick next, read-only, and saves a local report. "
                         + " ".join(rid + ": " + r["title"] + "." for rid, r in runners.RUNNERS.items()),
-                        "maintain, nightly-report, job-discovery",
+                        "maintain, nightly-report, learn",
                         "Nothing is scheduled; run any job by hand with `life-kit run ID`.", "multi",
                         choices=list(runners.RUNNERS), default=lambda a: ",".join(_runner_ready(a)) or None))
     for rid, r in runners.RUNNERS.items():
@@ -372,13 +365,13 @@ def _extend_telegram():
            "yes", "No phone channel. You can add it later with `life-kit telegram setup`.", "yesno"),
         _q("telegram.reply_domains", "telegram", "Which areas may send their content to your phone?",
            "Messages pass through Telegram's servers. Areas not listed only get 'done / failed, saved on your "
-           "computer'. Sharing career replies (job lists, prep) but keeping money and personal local is the usual choice.",
-           "career", "Only status messages are sent; all content stays on your computer.", "multi",
-           choices=["career", "work", "personal", "finance"], default=lambda a: "career", when=on,
+           "computer'. Only opt into the areas you want to receive; money and personal details can stay local.",
+           "learning", "Only status messages are sent; all content stays on your computer.", "multi",
+           choices=["learning", "work", "personal", "finance"], default=lambda a: "learning", when=on,
            when_text="Telegram enabled"),
         _q("telegram.notify", "telegram", "Which scheduled jobs should ping your phone when they finish?",
            "Pings arrive when each job finishes, so they follow the times you chose for scheduled jobs.",
-           "nightly-report, job-discovery", "No pings; use /status to check.", "multi",
+           "nightly-report, learn", "No pings; use /status to check.", "multi",
            choices=list(runners.RUNNERS), default=lambda a: ",".join(a.get("runners.selected") or []) or None,
            when=on, when_text="Telegram enabled"),
     ])

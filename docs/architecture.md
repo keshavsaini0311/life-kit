@@ -39,7 +39,7 @@ Events have unique IDs and UTC timestamps. Reports use local calendar days and e
 future events. Money uses decimal strings. Outcomes reference exact action IDs and
 stage counts deduplicate repeated outcomes for an action. Stages aren't additive
 people counts. Missing outcomes are unknown and rates don't establish causality.
-Resume fingerprints identify bytes, not quality, delivery or application success.
+Activity records describe explicit observations, not proof of improvement.
 
 A cross-process lock serializes writes. Atomic replacement keeps the previous complete
 file on interruption. The single-user store rewrites the log when appending; very large

@@ -44,3 +44,12 @@ per time slot; a failed run can be retried with `life-kit run ID`. Jobs read; th
 - Invalid event: the original log is kept and the line is reported; don't delete history.
 - Unsupported schema: run `life-kit migrate` (keeps `life.json.v1.bak`).
 - Telegram silent: `life-kit telegram check`; the service must be installed (`schedule install`).
+
+## Existing workspaces
+
+New setup uses personal, finance, learning and work areas. This release does not delete
+saved context, assistant skills, account settings or events from an existing workspace.
+Historical event labels remain readable, but new commands use general activity stages.
+Review old generated skills/configuration yourself when adopting the new public scope;
+re-running setup preserves edited files. Use `schedule remove` followed by `schedule install`
+to reconcile installed jobs with the current catalog. Unsupported runner IDs refuse to run.

@@ -2,7 +2,7 @@
 
 **A personal workspace you own, with AI-assistant routines that run on your own computer.**
 
-Keep context, money, career and work in one local folder. Claude Code and Codex share the
+Keep context, money, learning and work in one local folder. Claude Code and Codex share the
 same skills there. Scheduled jobs keep your ledger, learning loop and reports fresh, and an
 optional Telegram bot lets you run things from your phone. Share the software; keep your data.
 
@@ -34,14 +34,14 @@ Then start your assistant inside the workspace, with your connections available:
 python3 -m lifekit --workspace ~/life open claude     # or: open codex
 ```
 
-Say "daily run", "how am I doing", "find me jobs", "I spent 450 on food" or "standup".
+Say "daily run", "how am I doing", "I spent 450 on food" or "standup".
 The `life` skill routes the request to the right area.
 
 ## Skills
 
-`life` (router), `daily`, `learn`, `life-review`, and per area: `finance`; `prep`, `job-hunt`,
-`hiring-outreach`, `apply-autofill`, `find-contact` (career); `work`. Outreach and
-applications are **drafts only**: they never send or submit. You do that yourself.
+`life` (router), `daily`, `learn`, `life-review`, and per area: `finance`, `study` (learning), and `work`.
+These help you review records and prepare local notes;
+scheduled runs never send messages or change external accounts.
 
 ## What runs on its own
 
@@ -52,12 +52,11 @@ Pick any of these during setup. Change a time later with `schedule set`.
 | `maintain` | 21:45 daily | Imports bank CSVs, rebuilds monthly ledgers and the learning report, lists stale data |
 | `nightly-report` | your review time | Review of the day and one or two realistic next actions |
 | `work-brief` | 08:30 weekdays | Assigned tasks, PRs to review, mentions, service health |
-| `inbox-review` | 09:00, 19:00 | Recruiter threads, who replied last, reply drafts |
-| `calendar-prep` | 21:30 | Prep windows around your real calendar |
+| `inbox-review` | 09:00, 19:00 | Inbox threads, latest sender, deadlines and reply drafts |
+| `calendar-prep` | 21:30 | Study and planning windows around your calendar |
 | `finance-capture` | Sunday 18:00 | Ledger, unmatched bank rows, broker holdings |
 | `receipt-review` | 21:00 | Receipt emails to confirm as spending |
-| `job-discovery` | 08:00 | Open public roles that fit your target; never applies |
-| `learn` | Sunday 19:00 | What converts, from your own logged actions and outcomes |
+| `learn` | Sunday 19:00 | Learning and routine outcomes from recorded activities |
 
 Jobs are read-only, run once per time slot, never overlap, stop after 15 minutes, and save
 reports in `.local/reports/`. Your computer must be on and logged in.
@@ -71,8 +70,7 @@ are regenerated from the event log.
 ## Connections
 
 Optional, and read-only for every scheduled job: Gmail, Google Calendar and Drive, Slack,
-GitHub, ClickUp, Notion, Linear, SigNoz, Zerodha Kite, Zepto, Swiggy, Zomato, LinkedIn
-(community), or your own MCP server. See `life-kit connect list` and the
+GitHub, ClickUp, Notion, Linear, SigNoz, Zerodha Kite, Zepto, Swiggy, Zomato, or your own MCP server. See `life-kit connect list` and the
 [integration guide](docs/integrations.md). Configured is not connected: `connect verify ID`
 makes one real read and records the result, and `doctor` shows it.
 
@@ -80,10 +78,10 @@ makes one real read and records the result, and `doctor` shows it.
 
 ```sh
 life-kit --workspace ~/life doctor                     # files, connections, schedules
-life-kit --workspace ~/life checkin --sleep 7 --gym yes --prep 30
+life-kit --workspace ~/life checkin --sleep 7 --gym yes --study 30
 life-kit --workspace ~/life spend 120 --category food
-life-kit --workspace ~/life action --channel email --target acme-role --variant short
-life-kit --workspace ~/life outcome EVENT_ID reply --evidence "self-report: recruiter replied"
+life-kit --workspace ~/life action --domain learning --channel practice --target sql-joins --variant worked-example
+life-kit --workspace ~/life outcome EVENT_ID completed --evidence "self-report: exercise completed"
 life-kit --workspace ~/life run nightly-report         # any job, now
 life-kit --workspace ~/life schedule set work-brief 09:00 --days weekdays
 life-kit --workspace ~/life schedule install            # or: remove, status
@@ -98,7 +96,7 @@ life-kit --workspace ~/life telegram setup              # pair your phone later
 
 - Your workspace is local and git-ignored. Secrets live in `.local/secrets.json` (owner-only)
   and config files reference them as environment variables.
-- Nothing sends messages, applies, buys or edits tickets on its own. Setup does not authorize it.
+- Nothing sends messages, buys or edits tickets on its own. Setup does not authorize it.
 - Missing data is **unknown, not zero**. Self-reported values stay labelled as self-reported.
 - An AI provider has its own data handling: local files are read by a remote model when you
   let your assistant read them. Telegram replies carry content only for areas you allow.

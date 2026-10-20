@@ -4,12 +4,12 @@ description: >-
   Manage $name's money in the finance/ folder of the Life Kit workspace. Use this whenever the
   user mentions income arriving, something they spent, a bank statement or CSV export, rows
   waiting for review, whether they can afford something, savings, an emergency fund, runway,
-  investments, net worth, or an offer they want priced in real take-home terms. Trigger phrases
+  investments or net worth. Trigger phrases
   include "salary came", "I spent X", "I dropped a statement in the inbox", "what's in review",
   "categorise these", "add a rule", "can I afford", "should I buy this", "how are my finances",
-  "how much can I invest", "what's my runway", "this offer is X" and "can I afford to switch".
-  Five modes: LEDGER (the automatic import and its review queue), LOG (record a spend by hand),
-  POSITION (where things stand), OFFER (headline pay into take-home) and RUNWAY (how long the
+  "how much can I invest" and "what's my runway".
+  Four modes: LEDGER (the automatic import and its review queue), LOG (record a spend by hand),
+  POSITION (where things stand) and RUNWAY (how long the
   money lasts without income). Nothing in finance/ is ever uploaded, shared or published.
 ---
 
@@ -86,25 +86,11 @@ active goals, what is due in the next one to three months. Mark each figure obse
 statement, verified connector) or self-reported, with its date. Anything not known is "unknown",
 not zero. If the review queue is non-empty, say the spend total is incomplete and by how many rows.
 
-### OFFER — "this offer is X"
+### RUNWAY — "how long will my savings last"
 
-Write `finance/offers/<slug>.md`:
-
-1. Break headline pay into its parts: base, joining, retention, variable, equity. **Headline pay
-   is not cash.** Ask for the breakdown if it was not given.
-2. Estimate monthly take-home under the tax rules the user says apply to them. Ask which regime or
-   jurisdiction; do not assume. Label it an estimate and show the inputs.
-3. Compare against current take-home from `finance/context.md`, in take-home terms.
-4. Check any minimum the user set in `career/context.md`.
-5. Flag money a start date would forfeit at the current job (an unvested bonus, a clawback) and
-   say the number plainly, if the user has recorded one.
-6. Note the verdict for the career tracker only if the user asks.
-
-### RUNWAY — "can I afford to switch"
-
-Months of survival at the dated baseline spend in `finance/context.md`, what a notice-period gap
-costs, what pay cut is absorbable. Use only cash-like buckets; equity is not runway. If the
-baseline is stale or missing, say so and give the answer as a range.
+Months covered at the dated baseline spend in `finance/context.md`, separating essential
+costs, known one-off commitments and discretionary spending. Use only cash-like buckets;
+equity is not runway. If the baseline is stale or missing, ask or give an explicit range.
 
 ## Investing
 
@@ -121,7 +107,7 @@ baseline is stale or missing, say so and give the answer as a range.
 ## Hard rules
 
 - **`finance/` never leaves this machine.** Not to cloud storage, not attached to email, not in a
-  draft, not in a resume, not published as an artifact. If a task seems to need it, stop and ask.
+  draft, not in an external document, not published as an artifact. If a task seems to need it, stop and ask.
 - Never invent a number. Missing data is unknown, not zero.
 - Never rewrite or delete history to make a month look better. Corrections are new events or new
   rules, never edits to the generated ledger.
