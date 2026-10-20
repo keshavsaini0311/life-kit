@@ -57,7 +57,7 @@ class ScheduleTests(unittest.TestCase):
         timer = next(a for a in actions if str(a.get("path", "")).endswith("work-brief.timer"))
         self.assertIn("OnCalendar=Mon..Fri *-*-* 08:30:00", timer["content"])
         self.assertIn("Persistent=true", timer["content"])
-        self.assertIn(".config/systemd/user", str(timer["path"]))
+        self.assertIn(".config/systemd/user", Path(timer["path"]).as_posix())
 
     def test_cron_block_replaced_not_duplicated(self):
         calls = []

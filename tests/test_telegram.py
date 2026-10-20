@@ -166,8 +166,7 @@ class TelegramTests(unittest.TestCase):
     def test_stale_queued_task_expires_instead_of_running(self):
         queue = telegram.Queue(self.root)
         task = queue.add("run", "maintain")
-        queue.db.execute("UPDATE tasks SET created = ? WHERE id = ?", (0, task))
-        queue.db.commit()
+        queue.execute("UPDATE tasks SET created = ? WHERE id = ?", (0, task))
         api = FakeApi()
         rounds = iter([False, True])
         telegram.work(self.root, api, stop=lambda: next(rounds))

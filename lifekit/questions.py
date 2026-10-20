@@ -160,6 +160,7 @@ QUESTIONS = [
 ]
 
 TIME = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
+TIMEZONE = re.compile(r"^(UTC|[A-Z][A-Za-z_]+(/[A-Za-z0-9_+-]+){1,2})$")
 
 
 def applies(question, answers):
@@ -232,13 +233,18 @@ def parse(question, raw):
             raise ValueError("Use 24-hour HH:MM times separated by commas, for example 09:00,19:00.")
         return {"times": sorted(set(times)), "days": days}
     if kind == "timezone":
+        hint = "Use a timezone name such as Asia/Kolkata or America/New_York."
         try:
-            from zoneinfo import ZoneInfo
-            ZoneInfo(text)
+            import zoneinfo
         except ImportError:
-            pass
-        except Exception:
-            raise ValueError("Use a timezone name such as Asia/Kolkata or America/New_York.")
+            zoneinfo = None
+        if zoneinfo and zoneinfo.available_timezones():
+            try:
+                zoneinfo.ZoneInfo(text)
+            except Exception:
+                raise ValueError(hint)
+        elif not TIMEZONE.match(text):  # no tz database (e.g. Windows without tzdata): check the shape only
+            raise ValueError(hint)
         return text
     if kind == "path":
         path = Path(text).expanduser()

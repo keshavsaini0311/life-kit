@@ -8,6 +8,7 @@ import math
 import os
 from pathlib import Path
 import tempfile
+import time
 import uuid
 
 DOMAINS = ("personal", "finance", "career", "work")
@@ -55,7 +56,16 @@ def locked(root):
             if not stream.read(1):
                 stream.write("0"); stream.flush()
             stream.seek(0)
-            msvcrt.locking(stream.fileno(), msvcrt.LK_LOCK, 1)
+            # LK_LOCK gives up after ~10 s of contention; keep polling up to a minute instead.
+            deadline = time.monotonic() + 60
+            while True:
+                try:
+                    msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
+                    break
+                except OSError:
+                    if time.monotonic() > deadline:
+                        raise ValueError("Workspace is busy (another Life Kit write held the lock for a minute).")
+                    time.sleep(0.05)
         else:
             import fcntl
             fcntl.flock(stream, fcntl.LOCK_EX)

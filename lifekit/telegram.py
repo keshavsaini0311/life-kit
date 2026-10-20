@@ -54,50 +54,50 @@ class Api:
 
 
 class Queue:
-    def __init__(self, root):
-        path = Path(root) / ".local/telegram.sqlite3"
-        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        self.db = sqlite3.connect(str(path), check_same_thread=False)
-        self.lock = threading.Lock()
-        with self.lock, self.db:
-            self.db.execute("CREATE TABLE IF NOT EXISTS tasks (id INTEGER PRIMARY KEY, kind TEXT, arg TEXT, "
-                            "state TEXT, created REAL, finished REAL, result TEXT)")
-            self.db.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)")
+    """Task queue in .local/telegram.sqlite3. Each call opens and closes its own connection, so no
+    handle stays open (Windows cannot delete or replace a file another handle holds)."""
 
-    def _rows(self, sql, args=()):
-        with self.lock:
-            cursor = self.db.execute(sql, args)
-            names = [c[0] for c in cursor.description]
-            return [dict(zip(names, row)) for row in cursor.fetchall()]
+    def __init__(self, root):
+        self.path = Path(root) / ".local/telegram.sqlite3"
+        self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        self.execute("CREATE TABLE IF NOT EXISTS tasks (id INTEGER PRIMARY KEY, kind TEXT, arg TEXT, "
+                     "state TEXT, created REAL, finished REAL, result TEXT)")
+        self.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)")
+
+    def execute(self, sql, args=()):
+        """Run one statement in its own transaction; returns (rows as dicts, lastrowid, rowcount)."""
+        connection = sqlite3.connect(str(self.path), timeout=30)
+        try:
+            with connection:
+                cursor = connection.execute(sql, args)
+                names = [c[0] for c in cursor.description or ()]
+                return [dict(zip(names, row)) for row in cursor.fetchall()], cursor.lastrowid, cursor.rowcount
+        finally:
+            connection.close()
 
     def add(self, kind, arg):
-        with self.lock, self.db:
-            return self.db.execute("INSERT INTO tasks (kind, arg, state, created) VALUES (?, ?, 'queued', ?)",
-                                   (kind, arg, time.time())).lastrowid
+        return self.execute("INSERT INTO tasks (kind, arg, state, created) VALUES (?, ?, 'queued', ?)",
+                            (kind, arg, time.time()))[1]
 
     def next(self):
-        rows = self._rows("SELECT * FROM tasks WHERE state = 'queued' ORDER BY id LIMIT 1")
+        rows = self.execute("SELECT * FROM tasks WHERE state = 'queued' ORDER BY id LIMIT 1")[0]
         return rows[0] if rows else None
 
     def set_state(self, task_id, state, result=""):
-        with self.lock, self.db:
-            self.db.execute("UPDATE tasks SET state = ?, result = ?, finished = ? WHERE id = ?",
-                            (state, result, time.time(), task_id))
+        self.execute("UPDATE tasks SET state = ?, result = ?, finished = ? WHERE id = ?",
+                     (state, result, time.time(), task_id))
 
     def cancel(self, task_id):
-        with self.lock, self.db:
-            return self.db.execute("UPDATE tasks SET state = 'cancelled' WHERE id = ? AND state = 'queued'",
-                                   (task_id,)).rowcount
+        return self.execute("UPDATE tasks SET state = 'cancelled' WHERE id = ? AND state = 'queued'", (task_id,))[2]
 
     def recent(self, n=5):
-        return self._rows("SELECT * FROM tasks ORDER BY id DESC LIMIT ?", (n,))
+        return self.execute("SELECT * FROM tasks ORDER BY id DESC LIMIT ?", (n,))[0]
 
     def setting(self, key, value=None):
         if value is None:
-            rows = self._rows("SELECT value FROM settings WHERE key = ?", (key,))
+            rows = self.execute("SELECT value FROM settings WHERE key = ?", (key,))[0]
             return rows[0]["value"] if rows else None
-        with self.lock, self.db:
-            self.db.execute("INSERT OR REPLACE INTO settings VALUES (?, ?)", (key, str(value)))
+        self.execute("INSERT OR REPLACE INTO settings VALUES (?, ?)", (key, str(value)))
 
 
 def command_name(runner_id):
@@ -279,8 +279,7 @@ def _ask(root, config, text):
 
 def recover(queue):
     """After a crash or restart, tasks left 'running' did not finish."""
-    with queue.lock, queue.db:
-        queue.db.execute("UPDATE tasks SET state = 'failed', result = 'interrupted' WHERE state = 'running'")
+    queue.execute("UPDATE tasks SET state = 'failed', result = 'interrupted' WHERE state = 'running'")
 
 
 def work(root, api, stop):

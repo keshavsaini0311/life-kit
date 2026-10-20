@@ -146,6 +146,16 @@ class WizardTests(unittest.TestCase):
         self.assertEqual(self.answers()["career.resume_path"], str(real.resolve()))
         self.assertTrue(any("No file" in s for s in io.shown))
 
+    def test_timezone_accepted_without_tz_database(self):
+        # Windows Python has no IANA database unless the tzdata package is installed.
+        import zoneinfo
+        q = by_id("basics.timezone")
+        with mock.patch.object(zoneinfo, "ZoneInfo", side_effect=zoneinfo.ZoneInfoNotFoundError("x")), \
+                mock.patch.object(zoneinfo, "available_timezones", return_value=set()):
+            self.assertEqual(questions.parse(q, "Europe/London"), "Europe/London")
+            with self.assertRaises(ValueError):
+                questions.parse(q, "not a zone")
+
     def test_guide_matches_docs(self):
         docs = Path(__file__).resolve().parents[1] / "docs/setup-guide.md"
         self.assertEqual(questions.guide_markdown(), docs.read_text(encoding="utf-8"),
