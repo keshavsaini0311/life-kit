@@ -2,8 +2,9 @@
 import getpass
 import json
 from pathlib import Path
+import subprocess
 
-from . import core, questions, render
+from . import catalog, connections, core, questions, render
 
 ANSWERS = ".local/setup-answers.json"
 BACK = object()
@@ -125,7 +126,34 @@ def run(root, io=None, answers=None, answers_file=None, interactive=True, only=N
     for rel in finish(root, stored):
         if rel.endswith(".suggested"):
             io.say("Kept your edited " + rel[:-10] + "; new version saved as " + rel)
+    integrate(root, stored, io)
     return stored
+
+
+def integrate(root, answers, io, run=subprocess.run):
+    """Plugins and connection checks: the only setup steps that start other programs, each opted into."""
+    plugins = [p for p in catalog.PLUGINS if p["id"] in (answers.get("plugins.selected") or [])]
+    for plugin in plugins:
+        if answers.get("plugins.install_now"):
+            try:
+                result = run(plugin["install"].split(), capture_output=True, text=True, timeout=300)
+                io.say(("Installed " if result.returncode == 0 else "Could not install ") + plugin["id"]
+                       + ("" if result.returncode == 0 else "; run: " + plugin["install"]))
+            except (OSError, subprocess.TimeoutExpired):
+                io.say("Could not run Claude Code; install later with: " + plugin["install"])
+        else:
+            io.say("Install later: " + plugin["install"])
+    for conn_id in answers.get("connections.selected") or []:
+        item = connections.entry(root, conn_id)
+        io.say("\n" + item["title"] + " — how to log in:")
+        for step in item["login"]:
+            io.say("  - " + step)
+        if answers.get("connections.verify_now") and item.get("verify"):
+            try:
+                record = connections.verify(root, conn_id, run=run)
+                io.say("  Check: " + record["status"] + ("" if record["status"] == "ok" else " (" + str(record.get("error")) + ")"))
+            except ValueError as exc:
+                io.say("  Check skipped: " + str(exc))
 
 
 def finish(root, answers):
@@ -142,4 +170,7 @@ def finish(root, answers):
             config["assistants"] = enabled
             config["primary_assistant"] = answers.get("assistants.primary") or (enabled[0] if enabled else None)
     core.update_config(root, change)
-    return render.apply(root, answers)
+    written = render.apply(root, answers)
+    if answers.get("connections.selected"):
+        written += connections.write_configs(root, answers["connections.selected"])
+    return written

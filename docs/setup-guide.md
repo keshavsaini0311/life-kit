@@ -214,3 +214,64 @@ Which assistant apps should read this workspace. Both can share the same skills.
 - **If you skip:** The first one you picked.
 - **Choices:** claude, codex
 - **Asked when:** both assistants picked
+
+## Claude Code plugins
+
+Optional add-ons for Claude Code. Pick what you like; none are required.
+
+### Which Claude Code plugins should be installed? (comma-separated, or none)
+
+- **Why:** Plugins add workflows to Claude Code. superpowers: Structured brainstorming, planning, TDD and debugging workflows. context7: Fetches current library documentation instead of guessing APIs. github: GitHub integration for PRs and issues from Claude Code. code-review: Reviews diffs and pull requests for bugs. skill-creator: Create and improve your own skills, like the ones in this workspace. frontend-design: Better visual design when building pages or dashboards.
+- **Example:** superpowers, context7
+- **If you skip:** No plugins installed; you can install any later with `claude plugin install`.
+- **Choices:** superpowers, context7, github, code-review, skill-creator, frontend-design
+- **Asked when:** Claude Code picked
+
+### Run the plugin install commands now?
+
+- **Why:** Installs into your Claude Code user settings (not this workspace). Say no to just see the commands.
+- **Example:** yes
+- **If you skip:** Commands are printed for you to run later.
+- **Asked when:** any plugin picked
+
+## Connections
+
+Optional accounts your assistant may read: mail, calendar, work tools, broker, shopping.
+
+### Which connections do you want? (comma-separated, or none)
+
+- **Why:** Each lets your assistant READ one service. Writes like sending, ordering or editing tickets stay off. gmail = Gmail; google-calendar = Google Calendar; google-drive = Google Drive; slack = Slack; github = GitHub; clickup = ClickUp; notion = Notion; linear = Linear; signoz = SigNoz; kite = Zerodha Kite (read-only); zepto = Zepto; swiggy-instamart = Swiggy Instamart; swiggy-food = Swiggy Food; zomato = Zomato; linkedin = LinkedIn (community server);
+- **Example:** gmail, google-calendar, github
+- **If you skip:** No connections. Everything works from local files.
+- **Choices:** gmail, google-calendar, google-drive, slack, github, clickup, notion, linear, signoz, kite, zepto, swiggy-instamart, swiggy-food, zomato, linkedin
+
+### GitHub: GitHub token (read-only)
+
+- **Why:** Stored only in your workspace's .local/secrets.json and passed to assistants as LIFEKIT_GITHUB_TOKEN. Create a fine-grained personal access token at https://github.com/settings/personal-access-tokens with read-only access to the repositories you want. Paste it at the hidden prompt. Alternatively keep using the `gh` CLI (`gh auth login`).
+- **Example:** (typed hidden)
+- **If you skip:** GitHub is configured but cannot log in until you add it with `life-kit connect add github`.
+- **Asked when:** github picked
+- **Typed hidden** and stored only in your workspace, never in answers or logs.
+
+### SigNoz: SigNoz URL (https://...)
+
+- **Why:** Stored only in your workspace's .local/secrets.json and passed to assistants as SIGNOZ_URL. Install signoz-mcp-server (see docs) so the command is on your PATH. SigNoz Cloud users can instead add its hosted endpoint as a custom connection. Create an API key in SigNoz settings; paste your SigNoz URL and the key at the prompts.
+- **Example:** (typed hidden)
+- **If you skip:** SigNoz is configured but cannot log in until you add it with `life-kit connect add signoz`.
+- **Asked when:** signoz picked
+- **Typed hidden** and stored only in your workspace, never in answers or logs.
+
+### SigNoz: SigNoz API key
+
+- **Why:** Stored only in your workspace's .local/secrets.json and passed to assistants as SIGNOZ_API_KEY. Install signoz-mcp-server (see docs) so the command is on your PATH. SigNoz Cloud users can instead add its hosted endpoint as a custom connection. Create an API key in SigNoz settings; paste your SigNoz URL and the key at the prompts.
+- **Example:** (typed hidden)
+- **If you skip:** SigNoz is configured but cannot log in until you add it with `life-kit connect add signoz`.
+- **Asked when:** signoz picked
+- **Typed hidden** and stored only in your workspace, never in answers or logs.
+
+### Check each connection now with one real read?
+
+- **Why:** Configured is not connected. This runs your assistant once per connection with only one read tool allowed and records the result. Log in first (steps are printed after setup).
+- **Example:** no (log in first, then run `life-kit connect verify ID`)
+- **If you skip:** Connections stay 'configured, not verified' until you run `life-kit connect verify ID`.
+- **Asked when:** any connection picked

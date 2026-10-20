@@ -92,6 +92,16 @@ class RenderTests(unittest.TestCase):
         self.assertTrue((self.root / "LIFE.md").is_file())
         self.assertTrue((self.root / ".agents/skills/life-review/SKILL.md").is_file())
 
+    def test_all_templates_tracked_by_git(self):
+        # A template on disk but ignored by git would be missing from every clone.
+        import subprocess
+        repo = Path(__file__).resolve().parents[1]
+        listed = subprocess.run(["git", "ls-files", "--others", "--ignored", "--exclude-standard", "lifekit/templates"],
+                                cwd=str(repo), capture_output=True, text=True)
+        if listed.returncode:
+            self.skipTest("not a git checkout")
+        self.assertEqual(listed.stdout.strip(), "")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -257,3 +257,45 @@ def guide_markdown():
                 lines.append("- **Typed hidden** and stored only in your workspace, never in answers or logs.")
             lines.append("")
     return "\n".join(lines)
+
+
+def _picked(conn_id):
+    return lambda a: conn_id in (a.get("connections.selected") or [])
+
+
+def _extend_integrations():
+    from . import catalog
+    QUESTIONS.extend([
+        _q("plugins.selected", "plugins", "Which Claude Code plugins should be installed? (comma-separated, or none)",
+           "Plugins add workflows to Claude Code. " + " ".join(p["id"] + ": " + p["why"] for p in catalog.PLUGINS),
+           "superpowers, context7", "No plugins installed; you can install any later with `claude plugin install`.",
+           "multi", choices=[p["id"] for p in catalog.PLUGINS],
+           when=lambda a: "claude" in (a.get("assistants.enabled") or []), when_text="Claude Code picked"),
+        _q("plugins.install_now", "plugins", "Run the plugin install commands now?",
+           "Installs into your Claude Code user settings (not this workspace). Say no to just see the commands.",
+           "yes", "Commands are printed for you to run later.", "yesno",
+           when=lambda a: bool(a.get("plugins.selected")), when_text="any plugin picked"),
+        _q("connections.selected", "connections",
+           "Which connections do you want? (comma-separated, or none)",
+           "Each lets your assistant READ one service. Writes like sending, ordering or editing tickets stay off. "
+           + " ".join(c["id"] + " = " + c["title"] + ";" for c in catalog.CONNECTIONS),
+           "gmail, google-calendar, github", "No connections. Everything works from local files.", "multi",
+           choices=[c["id"] for c in catalog.CONNECTIONS]),
+    ])
+    for item in catalog.CONNECTIONS:
+        for secret in item["secrets"]:
+            QUESTIONS.append(_q("secret." + secret["name"], "connections", item["title"] + ": " + secret["prompt"],
+                                "Stored only in your workspace's .local/secrets.json and passed to assistants as "
+                                + secret["env"] + ". " + " ".join(item["login"]),
+                                "(typed hidden)", item["title"] + " is configured but cannot log in until you add it with "
+                                "`life-kit connect add " + item["id"] + "`.", "secret", secret_name=secret["name"],
+                                when=_picked(item["id"]), when_text=item["id"] + " picked"))
+    QUESTIONS.append(_q("connections.verify_now", "connections", "Check each connection now with one real read?",
+                        "Configured is not connected. This runs your assistant once per connection with only one "
+                        "read tool allowed and records the result. Log in first (steps are printed after setup).",
+                        "no (log in first, then run `life-kit connect verify ID`)",
+                        "Connections stay 'configured, not verified' until you run `life-kit connect verify ID`.",
+                        "yesno", when=lambda a: bool(a.get("connections.selected")), when_text="any connection picked"))
+
+
+_extend_integrations()
