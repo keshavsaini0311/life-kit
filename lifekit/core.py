@@ -126,6 +126,20 @@ def update_config(root, change):
     return config
 
 
+def secret(root, name):
+    """Read a stored secret; None when absent. Never print the result."""
+    path = Path(root) / ".local/secrets.json"
+    return json.loads(path.read_text(encoding="utf-8")).get(name) if path.is_file() else None
+
+
+def save_secret(root, name, value):
+    path = Path(root) / ".local/secrets.json"
+    with locked(root):
+        data = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+        data[name] = value
+        private_write(path, json_text(data))  # mkstemp creates 0600
+
+
 def migrate(root):
     root, config = load(root)
     if config["schema_version"] == CONFIG_SCHEMA:

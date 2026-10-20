@@ -5,7 +5,7 @@ from pathlib import Path
 import shutil
 import sys
 
-from . import core
+from . import core, questions, wizard
 
 
 def main(argv=None):
@@ -14,6 +14,9 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="command", required=True)
     init = sub.add_parser("init", help="Create a new private workspace with blank context")
     init.add_argument("--currency", default="INR")
+    p = sub.add_parser("setup", help="Guided setup: explained questions, resumable, never overwrites your edits")
+    p.add_argument("--answers", type=Path, help="JSON answers file; runs without prompting")
+    sub.add_parser("guide", help="Print every setup question with why/example/skip (Markdown)")
     sub.add_parser("migrate", help="Upgrade life.json to the current schema; keeps a backup")
     sub.add_parser("doctor", help="Check local files; does not authenticate or contact providers")
     for command in ("status", "report"):
@@ -46,6 +49,11 @@ def main(argv=None):
         root = args.workspace
         if args.command == "init":
             print("Created private workspace: " + str(core.init(root, args.currency)))
+        elif args.command == "setup":
+            wizard.run(root, answers_file=args.answers, interactive=args.answers is None)
+            print("\nSetup saved in " + str(root.expanduser().resolve()))
+        elif args.command == "guide":
+            print(questions.guide_markdown(), end="")
         elif args.command == "migrate":
             print("Upgraded. Previous config kept at: " + str(core.migrate(root)))
         elif args.command == "doctor":
@@ -72,6 +80,9 @@ def main(argv=None):
                 event = core.outcome(root, args.action_id, args.stage, args.evidence, args.request_id)
             print("Saved locally: " + event["id"])
         return 0
+    except (KeyboardInterrupt, EOFError):
+        print("\nStopped. Answers so far are saved; run setup again to continue.", file=sys.stderr)
+        return 130
     except (ValueError, OSError, UnicodeError) as exc:
         print("Error: " + str(exc), file=sys.stderr)
         return 1
