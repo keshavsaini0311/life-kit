@@ -3,8 +3,9 @@ import getpass
 import json
 from pathlib import Path
 import subprocess
+import sys
 
-from . import catalog, connections, core, questions, render
+from . import catalog, connections, core, questions, render, runners, schedule
 
 ANSWERS = ".local/setup-answers.json"
 BACK = object()
@@ -154,6 +155,18 @@ def integrate(root, answers, io, run=subprocess.run):
                 io.say("  Check: " + record["status"] + ("" if record["status"] == "ok" else " (" + str(record.get("error")) + ")"))
             except ValueError as exc:
                 io.say("  Check skipped: " + str(exc))
+    if answers.get("runners.install_now"):
+        try:
+            for line in schedule.install(root, run=run):
+                io.say("  " + line)
+            io.say("Scheduled jobs installed. Change a time later: life-kit schedule set ID HH:MM [days]")
+        except ValueError as exc:
+            io.say("Could not install schedules: " + str(exc))
+        if sys.platform == "darwin" and any(part in ("Desktop", "Documents", "Downloads") for part in Path(root).parts):
+            io.say("macOS note: background jobs may be blocked from reading ~/" + next(p for p in Path(root).parts if p in
+                   ("Desktop", "Documents", "Downloads")) + ". If a log says 'Operation not permitted', allow Python in "
+                   "System Settings → Privacy & Security → Files and Folders (or Full Disk Access), or keep the "
+                   "workspace in your home folder instead.")
 
 
 def finish(root, answers):
@@ -173,4 +186,9 @@ def finish(root, answers):
     written = render.apply(root, answers)
     if answers.get("connections.selected"):
         written += connections.write_configs(root, answers["connections.selected"])
+    if "runners.selected" in answers:
+        picked = answers["runners.selected"] or []
+        for rid in runners.RUNNERS:
+            plan = answers.get("runner." + rid) or {"times": runners.RUNNERS[rid]["times"], "days": runners.RUNNERS[rid]["days"]}
+            schedule.set_runner(root, rid, ",".join(plan["times"]), plan["days"], enabled=rid in picked)
     return written

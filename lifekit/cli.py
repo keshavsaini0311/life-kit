@@ -9,7 +9,7 @@ import getpass
 import os
 import subprocess
 
-from . import catalog, connections, core, learning, ledger, maintain, questions, runners, wizard
+from . import catalog, connections, core, learning, ledger, maintain, questions, runners, schedule, wizard
 
 
 def main(argv=None):
@@ -46,6 +46,19 @@ def main(argv=None):
     p = sub.add_parser("run", help="Run one scheduled job now (once per scheduled slot unless --force)")
     p.add_argument("runner", choices=sorted(runners.RUNNERS))
     p.add_argument("--force", action="store_true")
+    sched = sub.add_parser("schedule", help="Install, change or remove scheduled jobs (your OS scheduler)")
+    ssub = sched.add_subparsers(dest="action", required=True)
+    p = ssub.add_parser("install")
+    p.add_argument("--dry-run", action="store_true", help="Show what would be written; change nothing")
+    ssub.add_parser("remove")
+    ssub.add_parser("status")
+    p = ssub.add_parser("set", help="e.g. schedule set work-brief 08:30 --days weekdays")
+    p.add_argument("runner", choices=sorted(runners.RUNNERS))
+    p.add_argument("times", help="HH:MM or HH:MM,HH:MM")
+    p.add_argument("--days", default=None, help="daily, weekdays or mon..sun")
+    p.add_argument("--assistant", choices=("claude", "codex"))
+    p = ssub.add_parser("off")
+    p.add_argument("runner", choices=sorted(runners.RUNNERS))
     sub.add_parser("runners", help="List scheduled jobs, their times and whether they can run")
     sub.add_parser("plugins", help="Recommended Claude Code plugins and their install commands")
     p = sub.add_parser("open", help="Start Claude Code or Codex in the workspace with your connections")
@@ -108,6 +121,23 @@ def main(argv=None):
             print(args.runner + ": " + record["status"] + (" — " + record["report"] if record.get("report") else "")
                   + (" (" + record["error"] + ")" if record.get("error") else ""))
             return 0 if record["status"] in ("ok", "skipped-done", "skipped-locked") else 1
+        elif args.command == "schedule":
+            if args.action in ("set", "off"):
+                _, config = core.load(root)
+                current = runners.setting(config, args.runner)
+                if args.action == "set":
+                    schedule.set_runner(root, args.runner, args.times, args.days or current["days"], True, args.assistant)
+                else:
+                    schedule.set_runner(root, args.runner, ",".join(current["times"]), current["days"], False)
+                print("Saved. Apply with: life-kit --workspace " + str(root) + " schedule install")
+            elif args.action == "install":
+                for line in schedule.install(root, dry_run=args.dry_run):
+                    print(line)
+            elif args.action == "remove":
+                for line in schedule.remove(root) or ["Nothing was installed."]:
+                    print(line)
+            else:
+                print("\n".join(schedule.status(root)))
         elif args.command == "runners":
             root, config = core.load(root)
             ready = runners.available(config)

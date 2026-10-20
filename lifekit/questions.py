@@ -179,6 +179,8 @@ def _choice(token, choices):
 def parse(question, raw):
     """Turn typed text (or an answers-file value) into the stored value, or raise ValueError with a hint."""
     kind = question["kind"]
+    if isinstance(raw, dict) and kind == "schedule":
+        raw = ",".join(raw.get("times", [])) + " " + raw.get("days", "daily")
     if isinstance(raw, (list, bool)) and kind in ("multi", "yesno"):
         raw = ",".join(raw) if isinstance(raw, list) else ("yes" if raw else "no")
     text = str(raw).strip()
@@ -218,6 +220,15 @@ def parse(question, raw):
                 if value not in picked:
                     picked.append(value)
         return picked
+    if kind == "schedule":
+        parts = text.lower().split()
+        days = parts[1] if len(parts) > 1 else "daily"
+        if len(parts) > 2 or days not in ("daily", "weekdays", "mon", "tue", "wed", "thu", "fri", "sat", "sun"):
+            raise ValueError("Use times then days, for example: 08:30 weekdays, or 09:00,19:00 daily, or 18:00 sun.")
+        times = [t.strip() for t in parts[0].split(",") if t.strip()]
+        if not times or not all(TIME.match(t) for t in times):
+            raise ValueError("Use 24-hour HH:MM times separated by commas, for example 09:00,19:00.")
+        return {"times": sorted(set(times)), "days": days}
     if kind == "timezone":
         try:
             from zoneinfo import ZoneInfo
@@ -299,3 +310,42 @@ def _extend_integrations():
 
 
 _extend_integrations()
+
+
+def _runner_ready(answers):
+    from . import runners
+    return runners.available({"domains": answers.get("domains.enabled") or [],
+                              "connections": {c: {} for c in answers.get("connections.selected") or []}})
+
+
+def _runner_default(rid, runner):
+    def default(answers):
+        times = [answers["rules.review_time"]] if rid == "nightly-report" and answers.get("rules.review_time") else runner["times"]
+        return ",".join(times) + " " + runner["days"]
+    return default
+
+
+def _extend_runners():
+    from . import runners
+    QUESTIONS.append(_q("runners.selected", "runners", "Which jobs should run on their own? (comma-separated, or none)",
+                        "Each runs at the time you pick next, read-only, and saves a local report. "
+                        + " ".join(rid + ": " + r["title"] + "." for rid, r in runners.RUNNERS.items()),
+                        "maintain, nightly-report, job-discovery",
+                        "Nothing is scheduled; run any job by hand with `life-kit run ID`.", "multi",
+                        choices=list(runners.RUNNERS), default=lambda a: ",".join(_runner_ready(a)) or None))
+    for rid, r in runners.RUNNERS.items():
+        default = _runner_default(rid, r)
+        QUESTIONS.append(_q("runner." + rid, "runners", "When should '" + rid + "' run? (times then days)",
+                            r["title"] + ". Your computer must be on and logged in at that time; a missed run "
+                            "catches up when it wakes (macOS/Linux).",
+                            "08:30 weekdays · 09:00,19:00 daily · 18:00 sun", "The suggested time is used.", "schedule",
+                            default=default, when=(lambda rid=rid: lambda a: rid in (a.get("runners.selected") or []))(),
+                            when_text=rid + " picked"))
+    QUESTIONS.append(_q("runners.install_now", "runners", "Install these schedules with your system scheduler now?",
+                        "Uses launchd (macOS), systemd or cron (Linux) or Task Scheduler (Windows) for your user only. "
+                        "Remove any time with `life-kit schedule remove`.",
+                        "yes", "Saved but not installed; run `life-kit schedule install` later.", "yesno",
+                        when=lambda a: bool(a.get("runners.selected")), when_text="any job picked"))
+
+
+_extend_runners()
