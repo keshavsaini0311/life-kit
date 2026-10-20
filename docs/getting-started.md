@@ -1,51 +1,46 @@
-# Your own workspace
+# Getting started
 
-1. Run the README quickstart with Python 3.9+.
-2. Choose a private data folder. Use ignored workspace/ or an absolute external path.
-3. Edit personal/rules.md with your preferences, available time and constraints.
-4. Add useful dated facts to the domain context files. Blank is fine.
-5. Record a few real observations and generate a report.
-6. Add an assistant or connector only for a recurring need.
+1. Install Python 3.9 or newer. Nothing else is required for the core.
+2. Optional: install Claude Code (`claude`) and/or Codex (`codex`) and sign in. Setup detects them.
+3. Run `python3 -m lifekit --workspace ~/life setup` from this folder and answer the questions.
+   Read [the setup guide](setup-guide.md) first if you like; it explains every question.
+4. Log in to the connections you picked (setup prints the steps), then check each one:
+   `python3 -m lifekit --workspace ~/life connect verify gmail`.
+5. Try a job by hand before scheduling it: `python3 -m lifekit --workspace ~/life run nightly-report`.
+   Open the report it prints. When happy: `... schedule install`.
+6. Work with your assistant inside the workspace: `python3 -m lifekit --workspace ~/life open claude`.
+
+Choose a workspace folder outside this repository (for example `~/life`). On macOS, avoid
+`~/Desktop`, `~/Documents` and `~/Downloads`: background jobs need extra privacy permission
+to read those folders. Re-running setup asks only new questions and never overwrites a file
+you edited. It writes `FILE.suggested` beside it instead.
 
 | Workspace file | Owns |
 |---|---|
-| life.json | Schema, currency and implemented privacy policy |
-| personal/rules.md | Your preferences and boundaries |
-| DOMAIN/context.md | Human-readable dated domain context |
-| learning/events.jsonl | Canonical typed observations |
-| .local/reports/ | Generated reports, safe to regenerate |
+| `life.json` | Schema, currency, areas, assistants, connections, job times, Telegram choices |
+| `personal/rules.md` | Your preferences and boundaries; every assistant reads it first |
+| `LIFE.md`, `AGENTS.md`, `CLAUDE.md` | Routing map and assistant instructions |
+| `<area>/context.md` | Dated context per area |
+| `.agents/skills/` | Shared skills (`.claude/skills` points here) |
+| `learning/events.jsonl` | Canonical typed observations (check-ins, spending, actions, outcomes) |
+| `finance/inbox/`, `finance/rules.json` | Bank CSVs in, category rules |
+| `finance/ledger/YYYY-MM.md`, `learning/reports/` | Generated; don't hand-edit |
+| `.local/` | Reports, logs, secrets, connection and job status (private) |
 
-The event log is the core's only financial observation store, not a second money
-ledger. Recorded spending is not a bank balance or complete spending unless input
-is complete. Amounts support two decimal places in v0.1. Currencies requiring other
-precision are not supported yet. Distinct currencies are never summed together.
+## Scheduling notes
 
-Ask your assistant: "Review my last week using my rules and logged observations.
-Suggest one next action that fits my time. Tell me what is stale or unknown."
-An empty log doesn't mean you did nothing. Check-ins don't prove study quality.
-
-## Scheduling
-
-Run a report manually first and open the result. With a virtualenv installation,
-a cron example is:
-
-```cron
-0 21 * * * /absolute/source/.venv/bin/life-kit --workspace /absolute/private/workspace report
-```
-
-Replace both paths. Windows can use Task Scheduler; macOS may use a user LaunchAgent.
-The starter installs none of them. Schedules use machine-local time; the machine must
-be available. There is no wake, catch-up, notification or retry service yet. Reports
-replace the same day/window artifact atomically. Writes use a cross-process lock.
-Back up your private workspace separately to a destination you control.
+Jobs use your computer's local time and only run while it is on and logged in. launchd and
+systemd catch up a missed run after wake; cron and Task Scheduler may not. Each job runs once
+per time slot; a failed run can be retried with `life-kit run ID`. Jobs read; they never send.
 
 ## Troubleshooting
 
-- Workspace not initialized: initialize an empty folder and reuse its path.
-- No spending recorded: unknown, not zero.
-- Invalid event: retain the original log and inspect the reported line. There is no
-  correction/migration CLI yet; don't silently delete history.
-- Optional CLI absent: local core still works. Installed is not authenticated.
-- Permission error: use a writable folder, without disabling machine security.
-- Unsupported schema/policy: retain the original and use a matching release or an
-  explicit migration. Don't edit a version number to bypass validation.
+- `doctor` shows files, connections (configured vs verified) and whether jobs are installed.
+- A job log says `Operation not permitted` (macOS): allow Python under System Settings →
+  Privacy & Security → Files and Folders / Full Disk Access, or move the workspace to `~/life`.
+- A job says `claude not installed`: reinstall schedules after installing the CLI, because jobs
+  keep the PATH from install time (`schedule install`).
+- No spending recorded: unknown, not zero. Unmatched bank rows wait in `finance/imports/review.md`.
+- Invalid event: the original log is kept and the line is reported; don't delete history.
+- Unsupported schema: run `life-kit migrate` (keeps `life.json.v1.bak`).
+- Telegram silent: `life-kit telegram check`; the service must be installed (`schedule install`).

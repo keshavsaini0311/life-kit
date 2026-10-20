@@ -16,6 +16,14 @@ def msg(text, chat_id=42, user_id=7, chat_type="private", age=0):
             "chat": {"id": chat_id, "type": chat_type}, "from": {"id": user_id}}
 
 
+class Quiet:
+    def ask(self, text, secret=False):
+        raise AssertionError(text)
+
+    def say(self, text):
+        pass
+
+
 class FakeApi:
     def __init__(self, responses=None):
         self.responses = responses or {}
@@ -149,7 +157,7 @@ class TelegramTests(unittest.TestCase):
     def test_wizard_saves_telegram_choices(self):
         from lifekit import wizard
         root = Path(self.temp.name) / "fresh"
-        wizard.run(root, interactive=False, answers={"basics.currency": "USD", "telegram.enabled": True,
+        wizard.run(root, io=Quiet(), interactive=False, answers={"basics.currency": "USD", "telegram.enabled": True,
                                                      "telegram.reply_domains": ["career", "work"]})
         tg = core.load(root)[1]["telegram"]
         self.assertEqual((tg["enabled"], tg["reply_domains"]), (True, ["career", "work"]))

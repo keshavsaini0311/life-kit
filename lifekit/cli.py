@@ -177,7 +177,13 @@ def main(argv=None):
                     raise ValueError("Missing context file for " + domain)
             print("Local schema and event log valid (" + str(count) + " records).")
             print("Optional tools: " + ", ".join(n + "=" + ("installed" if shutil.which(n) else "absent") for n in ("codex", "claude", "gh", "node")))
-            print("Provider authentication/network access: NOT CHECKED.")
+            records = connections.status(root)
+            for conn_id in connections.enabled(root):
+                r = records.get(conn_id, {})
+                print(conn_id + ": " + ("verified read " + r["last_read_at"] if r.get("status") == "ok"
+                                        else "configured, not verified" + (" (" + r["status"] + ")" if r.get("status") else "")))
+            print("Scheduled jobs: " + schedule.status(root)[-1].replace("Installed with the system scheduler", "installed").replace("Not installed. Run: life-kit schedule install", "not installed"))
+            print("Provider authentication/network access: only as shown above; doctor makes no network calls.")
         elif args.command == "status":
             print(core.json_text(core.snapshot(root, args.days)), end="")
         elif args.command == "report":

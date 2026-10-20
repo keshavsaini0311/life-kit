@@ -16,6 +16,14 @@ def recorder(calls, crontab=""):
     return run
 
 
+class Quiet:
+    def ask(self, text, secret=False):
+        raise AssertionError(text)
+
+    def say(self, text):
+        pass
+
+
 class ScheduleTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -111,7 +119,7 @@ class ScheduleTests(unittest.TestCase):
     def test_wizard_answers_set_runner_times(self):
         from lifekit import wizard
         root = Path(self.temp.name) / "fresh"
-        wizard.run(root, interactive=False, answers={
+        wizard.run(root, io=Quiet(), interactive=False, answers={
             "basics.currency": "USD", "domains.enabled": ["career"], "rules.review_time": "21:00",
             "runners.selected": ["nightly-report", "job-discovery"], "runner.job-discovery": "07:15 weekdays"})
         config = core.load(root)[1]

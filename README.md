@@ -1,94 +1,111 @@
 # Life Kit
 
-**A personal workspace you own, with routines an AI assistant can help you run.**
+**A personal workspace you own, with AI-assistant routines that run on your own computer.**
 
-Keep context, money, career and work in one local folder. Record what actually
-happened, review it, and decide what to do next. Share the software; keep your data.
-The core runs without an AI account, API key, server or paid dependency.
+Keep context, money, career and work in one local folder. Claude Code and Codex share the
+same skills there. Scheduled jobs keep your ledger, learning loop and reports fresh, and an
+optional Telegram bot lets you run things from your phone. Share the software; keep your data.
 
-## Try it in five minutes
+## Set up in one command
 
-Requires Python 3.9+. From this source folder:
-
-```sh
-python3 -m lifekit --workspace ./workspace init --currency INR
-python3 -m lifekit --workspace ./workspace doctor
-python3 -m lifekit --workspace ./workspace checkin --sleep 7 --gym yes --prep 30
-python3 -m lifekit --workspace ./workspace spend 120 --category food
-python3 -m lifekit --workspace ./workspace report
-```
-
-Open the printed report path. Edit `workspace/personal/rules.md` with your preferences
-and constraints, then add dated context to the domain folders. `workspace/` is ignored
-by Git. You can choose an absolute folder outside the repository; reuse the same
-`--workspace` path for every command. Init refuses nonempty destinations.
-
-Optionally install the CLI in a virtual environment:
+Requires Python 3.9+. No packages to install. From this folder:
 
 ```sh
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install .
-life-kit --workspace ./workspace status
+python3 -m lifekit --workspace ~/life setup
 ```
 
-On Windows use `python` and activate with `.venv\Scripts\Activate.ps1` in PowerShell.
-Activation is unnecessary when running `python -m lifekit` directly from source.
+Setup asks plain questions, one at a time. Each one tells you **why it is asked, an example
+answer, and what happens if you skip it**. Press Enter to accept a suggestion or skip. Answers
+save as you go, so stop any time and run the same command to continue. Every question is in
+the [setup guide](docs/setup-guide.md) if you want to read them first.
 
-## What works today
-
-| Feature | Behavior |
+| Setup section | What you get |
 |---|---|
-| Workspace setup | Blank personal, finance, career and work context |
-| Local doctor | Config/event validation and optional CLI detection |
-| Check-ins | Explicit sleep, gym and prep self-reports |
-| Spending | Exact decimal amounts in your chosen currency |
-| Action/outcome log | Each outcome links to one specific action ID |
-| Resume fingerprint | Hashes the actual file used without uploading it |
-| Review | Local Markdown report, with missing data visibly unknown |
-| Agent workflow | Generated workspace AGENTS.md and portable review skill |
+| Basics, life areas, rules | `personal/rules.md`, `LIFE.md` routing map, `AGENTS.md` / `CLAUDE.md`, context per area |
+| AI assistants | Skills written once in `.agents/skills/`, linked for Claude Code (`.claude/skills`) |
+| Plugins | Optional Claude Code plugins (superpowers, context7, …) installed if you say yes |
+| Connections | `.mcp.json` (Claude) and `.codex/config.toml` (Codex) with read-only tool lists |
+| Scheduled runs | Jobs at times you choose, installed with launchd, systemd/cron or Task Scheduler |
+| Phone | Your own Telegram bot, paired to your private chat only |
 
-The core does **not** connect Gmail, calendars, banks, shopping, work systems or
-Telegram. Those need per-user authentication and adapters. See the
-[integration guide](docs/integrations.md) and [roadmap](docs/roadmap.md).
-This is an early reusable starter, not the full automation of its private origin.
-
-## Learn from outcomes
-
-Record an action only after it happened:
+Then start your assistant inside the workspace, with your connections available:
 
 ```sh
-python3 -m lifekit --workspace ./workspace action --channel email --target demo-role --variant specific-role
+python3 -m lifekit --workspace ~/life open claude     # or: open codex
 ```
 
-Use the printed ID as EVENT_ID:
+Say "daily run", "how am I doing", "find me jobs", "I spent 450 on food" or "standup".
+The `life` skill routes the request to the right area.
+
+## Skills
+
+`life` (router), `daily`, `learn`, `life-review`, and per area: `finance`; `prep`, `job-hunt`,
+`hiring-outreach`, `apply-autofill`, `find-contact` (career); `work`. Outreach and
+applications are **drafts only**: they never send or submit. You do that yourself.
+
+## What runs on its own
+
+Pick any of these during setup. Change a time later with `schedule set`.
+
+| Job | Suggested time | Does |
+|---|---|---|
+| `maintain` | 21:45 daily | Imports bank CSVs, rebuilds monthly ledgers and the learning report, lists stale data |
+| `nightly-report` | your review time | Review of the day and one or two realistic next actions |
+| `work-brief` | 08:30 weekdays | Assigned tasks, PRs to review, mentions, service health |
+| `inbox-review` | 09:00, 19:00 | Recruiter threads, who replied last, reply drafts |
+| `calendar-prep` | 21:30 | Prep windows around your real calendar |
+| `finance-capture` | Sunday 18:00 | Ledger, unmatched bank rows, broker holdings |
+| `receipt-review` | 21:00 | Receipt emails to confirm as spending |
+| `job-discovery` | 08:00 | Open public roles that fit your target; never applies |
+| `learn` | Sunday 19:00 | What converts, from your own logged actions and outcomes |
+
+Jobs are read-only, run once per time slot, never overlap, stop after 15 minutes, and save
+reports in `.local/reports/`. Your computer must be on and logged in.
+
+**Ledger and learning maintain themselves.** Drop bank CSVs in `finance/inbox/`. Rows matching
+your rules in `finance/rules.json` (e.g. `{"match": "swiggy", "category": "food"}`) post as
+observed spending. Transfers, investments, income and unmatched rows are never guessed: they
+wait in `finance/imports/review.md` until you add a rule. Monthly ledgers and learning reports
+are regenerated from the event log.
+
+## Connections
+
+Optional, and read-only for every scheduled job: Gmail, Google Calendar and Drive, Slack,
+GitHub, ClickUp, Notion, Linear, SigNoz, Zerodha Kite, Zepto, Swiggy, Zomato, LinkedIn
+(community), or your own MCP server. See `life-kit connect list` and the
+[integration guide](docs/integrations.md). Configured is not connected: `connect verify ID`
+makes one real read and records the result, and `doctor` shows it.
+
+## Everyday commands
 
 ```sh
-python3 -m lifekit --workspace ./workspace outcome EVENT_ID reply --evidence "self-report: recruiter replied"
+life-kit --workspace ~/life doctor                     # files, connections, schedules
+life-kit --workspace ~/life checkin --sleep 7 --gym yes --prep 30
+life-kit --workspace ~/life spend 120 --category food
+life-kit --workspace ~/life action --channel email --target acme-role --variant short
+life-kit --workspace ~/life outcome EVENT_ID reply --evidence "self-report: recruiter replied"
+life-kit --workspace ~/life run nightly-report         # any job, now
+life-kit --workspace ~/life schedule set work-brief 09:00 --days weekdays
+life-kit --workspace ~/life schedule install            # or: remove, status
+life-kit --workspace ~/life telegram setup              # pair your phone later
 ```
 
-This sends no email. Receipts, auto replies, accepts, human replies, referrals,
-assessments, interviews and offers remain distinct. Repeated outcomes for the same
-stage/action count once. Use `--request-id` for retry deduplication. For a real
-application, `action --resume PATH` stores its SHA256 locally. Missing old resume
-versions are never guessed.
+`life-kit` is `python3 -m lifekit` from this folder, or install it:
+`python3 -m venv .venv && . .venv/bin/activate && pip install .` (Windows: `python`, and
+`.venv\Scripts\Activate.ps1`).
 
-## Use with an assistant
+## Privacy and safety
 
-Ask your local assistant to read the private workspace's AGENTS.md and rules, then
-help with a specific domain. Use [life-review](lifekit/templates/skills/life-review/SKILL.md) if it supports
-skills. The CLI never starts an AI session. An AI provider has its own data handling:
-local storage does not mean files stay local once a remote model reads them.
+- Your workspace is local and git-ignored. Secrets live in `.local/secrets.json` (owner-only)
+  and config files reference them as environment variables.
+- Nothing sends messages, applies, buys or edits tickets on its own. Setup does not authorize it.
+- Missing data is **unknown, not zero**. Self-reported values stay labelled as self-reported.
+- An AI provider has its own data handling: local files are read by a remote model when you
+  let your assistant read them. Telegram replies carry content only for areas you allow.
 
-```text
-lifekit/       Local CLI and storage
-skills/        Portable assistant workflow
-examples/      Fictional demo
-workspace/     Your private data, generated locally and ignored
-```
+[Setup guide](docs/setup-guide.md) · [Getting started](docs/getting-started.md) ·
+[Architecture](docs/architecture.md) · [Integrations](docs/integrations.md) ·
+[GitHub sharing](docs/publishing.md) · [Roadmap](docs/roadmap.md) · [Contributing](CONTRIBUTING.md)
 
-[Getting started](docs/getting-started.md) · [Architecture](docs/architecture.md) ·
-[GitHub sharing](docs/publishing.md) · [Contributing](CONTRIBUTING.md)
-
-Run `python3 -m unittest discover -s tests -v` and `python3 scripts/check_public.py`.
-MIT licensed. No telemetry, background jobs or external actions are installed.
+Develop: `python3 -m unittest discover -s tests -v` and `python3 scripts/check_public.py`.
+MIT licensed. No telemetry.

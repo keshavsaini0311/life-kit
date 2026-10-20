@@ -56,6 +56,8 @@ def _ask_one(root, io, q, answers):
     default = q["default"](answers) if q.get("default") else None
     if default:
         io.say("  Press Enter for: " + default)
+    elif q["kind"] != "currency":
+        io.say("  Press Enter to skip.")
     while True:
         raw = io.ask("> ", secret=q["kind"] == "secret")
         word = raw.strip().lower()
@@ -66,8 +68,11 @@ def _ask_one(root, io, q, answers):
                 io.say("  This one is required.")
                 continue
             return None
-        if not raw.strip() and default:
-            raw = default
+        if not raw.strip():
+            if default:
+                raw = default
+            elif q["kind"] != "currency":
+                return None  # Enter skips an optional question
         try:
             return _store(root, q, raw)
         except ValueError as exc:
@@ -88,7 +93,10 @@ def run(root, io=None, answers=None, answers_file=None, interactive=True, only=N
             io.say("Upgraded workspace config; backup at " + str(core.migrate(root)))
         stored.setdefault("basics.currency", config["currency"])
     for key, value in given.items():
-        stored[key] = _store(root, _find(key), value) if initialized or _find(key)["kind"] != "secret" else value
+        try:
+            stored[key] = _store(root, _find(key), value) if initialized or _find(key)["kind"] != "secret" else value
+        except ValueError as exc:
+            raise ValueError(key + ": " + str(exc))
     if not initialized:
         if "basics.currency" not in stored:
             if not interactive:
@@ -128,7 +136,38 @@ def run(root, io=None, answers=None, answers_file=None, interactive=True, only=N
         if rel.endswith(".suggested"):
             io.say("Kept your edited " + rel[:-10] + "; new version saved as " + rel)
     integrate(root, stored, io, interactive=interactive)
+    for line in summary(root):
+        io.say(line)
     return stored
+
+
+def summary(root):
+    """What exists now, what is only configured, and the next commands."""
+    root, config = core.load(root)
+    cli = "life-kit --workspace " + str(root)
+    lines = ["", "== Setup summary ==", "Workspace: " + str(root),
+             "Areas: " + (", ".join(config.get("domains") or []) or "none (core only)"),
+             "Assistants: " + (", ".join(config.get("assistants") or []) or "none"), "", "Connections:"]
+    records = connections.status(root)
+    for conn_id in connections.enabled(root):
+        record = records.get(conn_id, {})
+        lines.append("  " + conn_id + ": " + ("verified read " + record["last_read_at"] if record.get("status") == "ok"
+                                              else "configured, not verified" + (" (" + record["status"] + ")" if record.get("status") else "")))
+    if not connections.enabled(root):
+        lines.append("  none")
+    installed = bool(schedule._record(root).get("files") or schedule._record(root).get("tasks") or schedule._record(root).get("cron"))
+    lines.append("Scheduled jobs:")
+    picked = [rid for rid in runners.RUNNERS if runners.setting(config, rid)["enabled"]]
+    for rid in picked:
+        s = runners.setting(config, rid)
+        lines.append("  " + rid + ": " + ",".join(s["times"]) + " " + s["days"] + (" (installed)" if installed else " (saved, not installed)"))
+    if not picked:
+        lines.append("  none")
+    tg = config.get("telegram") or {}
+    lines.append("Telegram: " + ("paired" if tg.get("owner") else "enabled, not paired" if tg.get("enabled") else "off"))
+    lines += ["", "Next:", "  " + cli + " open claude     # or: open codex", "  " + cli + " connect verify ID   # after logging in",
+              "  " + cli + " schedule install    # when you are ready", "  " + cli + " doctor"]
+    return lines
 
 
 def integrate(root, answers, io, run=subprocess.run, interactive=True):
@@ -204,6 +243,7 @@ def finish(root, answers):
     if "runners.selected" in answers:
         picked = answers["runners.selected"] or []
         for rid in runners.RUNNERS:
-            plan = answers.get("runner." + rid) or {"times": runners.RUNNERS[rid]["times"], "days": runners.RUNNERS[rid]["days"]}
+            q = _find("runner." + rid)
+            plan = answers.get("runner." + rid) or questions.parse(q, q["default"](answers))  # suggested time
             schedule.set_runner(root, rid, ",".join(plan["times"]), plan["days"], enabled=rid in picked)
     return written

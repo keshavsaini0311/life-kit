@@ -108,7 +108,7 @@ class WizardTests(unittest.TestCase):
         config = json.loads((self.root / "life.json").read_text())
         config["schema_version"] = 1
         (self.root / "life.json").write_text(json.dumps(config))
-        wizard.run(self.root, io=FakeIO([]), interactive=False)
+        wizard.run(self.root, io=FakeIO([""] * 0), interactive=False)
         self.assertEqual(core.load(self.root)[1]["schema_version"], 2)
         self.assertEqual(self.answers()["basics.currency"], "USD")
 
@@ -132,6 +132,19 @@ class WizardTests(unittest.TestCase):
         self.assertIn("run setup again", result.stderr)
         self.assertEqual(self.answers()["basics.name"], "Sam")
         self.assertLess(result.stdout.index("== Basics =="), result.stdout.index("currency"))
+
+    def test_enter_skips_optional_question(self):
+        wizard.run(self.root, io=FakeIO([""]), only=["basics.currency", "basics.name"], answers={"basics.currency": "USD"})
+        self.assertIsNone(self.answers()["basics.name"])
+
+    def test_missing_resume_path_reasks(self):
+        real = Path(self.temp.name) / "cv.pdf"
+        real.write_text("cv")
+        io = FakeIO(["/no/such/cv.pdf", str(real)])
+        wizard.run(self.root, io=io, only=["basics.currency", "domains.enabled", "career.resume_path"],
+                   answers={"basics.currency": "USD", "domains.enabled": ["career"]})
+        self.assertEqual(self.answers()["career.resume_path"], str(real.resolve()))
+        self.assertTrue(any("No file" in s for s in io.shown))
 
     def test_guide_matches_docs(self):
         docs = Path(__file__).resolve().parents[1] / "docs/setup-guide.md"
