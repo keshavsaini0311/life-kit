@@ -14,6 +14,7 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="command", required=True)
     init = sub.add_parser("init", help="Create a new private workspace with blank context")
     init.add_argument("--currency", default="INR")
+    sub.add_parser("migrate", help="Upgrade life.json to the current schema; keeps a backup")
     sub.add_parser("doctor", help="Check local files; does not authenticate or contact providers")
     for command in ("status", "report"):
         p = sub.add_parser(command)
@@ -45,6 +46,8 @@ def main(argv=None):
         root = args.workspace
         if args.command == "init":
             print("Created private workspace: " + str(core.init(root, args.currency)))
+        elif args.command == "migrate":
+            print("Upgraded. Previous config kept at: " + str(core.migrate(root)))
         elif args.command == "doctor":
             root, _ = core.load(root)
             count = len(core.events(root))

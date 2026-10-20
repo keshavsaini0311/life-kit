@@ -12,7 +12,10 @@ import uuid
 
 DOMAINS = ("personal", "finance", "career", "work")
 STAGES = ("receipt", "auto_reply", "accept", "reply", "referral", "assessment", "interview", "offer", "rejection", "bounce")
-SCHEMA = 1
+EVENT_SCHEMA = 1  # event rows; never bump without a log migration
+CONFIG_SCHEMA = 2  # life.json; v2 adds optional setup keys (profile, domains, runners, telegram...)
+SCHEMA = EVENT_SCHEMA
+PRIVACY = {"reports": "local", "external_actions": "explicit-user-request"}
 
 
 def timestamp():
@@ -72,8 +75,7 @@ def init(root, currency="INR"):
     if not (len(currency) == 3 and currency.isascii() and currency.isalpha()):
         raise ValueError("Currency must be a three-letter code, for example INR or USD.")
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
-    config = {"schema_version": SCHEMA, "currency": currency.upper(),
-              "privacy": {"reports": "local", "external_actions": "explicit-user-request"}}
+    config = {"schema_version": CONFIG_SCHEMA, "currency": currency.upper(), "privacy": dict(PRIVACY)}
     private_write(root / "life.json", json_text(config))
     private_write(root / ".gitignore", "*\n")
     private_write(root / "personal/rules.md", "# Your rules\n\nWrite your preferences, constraints, privacy choices and realistic available time here.\n")
@@ -100,15 +102,40 @@ def load(root):
     path = root / "life.json"
     if not path.is_file():
         raise ValueError("Workspace not initialized. Run init first.")
-    data = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(data, dict) or data.get("schema_version") != SCHEMA:
+    return root, validate_config(json.loads(path.read_text(encoding="utf-8")))
+
+
+def validate_config(data):
+    if not isinstance(data, dict) or data.get("schema_version") not in (1, CONFIG_SCHEMA):
         raise ValueError("Unsupported workspace schema; do not modify data with this version.")
-    if data.get("privacy") != {"reports": "local", "external_actions": "explicit-user-request"}:
+    if data.get("privacy") != PRIVACY:
         raise ValueError("Unsupported privacy policy. This core only implements local reports and explicit external actions.")
     currency = data.get("currency", "")
     if not isinstance(currency, str) or len(currency) != 3 or not currency.isascii() or not currency.isalpha():
         raise ValueError("Invalid workspace currency.")
-    return root, data
+    return data
+
+
+def update_config(root, change):
+    """Load, let `change` mutate a copy, validate and atomically replace life.json."""
+    root, _ = load(root)
+    with locked(root):
+        _, config = load(root)
+        change(config)
+        private_write(root / "life.json", json_text(validate_config(config)))
+    return config
+
+
+def migrate(root):
+    root, config = load(root)
+    if config["schema_version"] == CONFIG_SCHEMA:
+        raise ValueError("Workspace already uses schema " + str(CONFIG_SCHEMA) + ".")
+    backup = root / "life.json.v1.bak"
+    with locked(root):
+        private_write(backup, (root / "life.json").read_text(encoding="utf-8"))
+        config["schema_version"] = CONFIG_SCHEMA
+        private_write(root / "life.json", json_text(config))
+    return backup
 
 
 def events(root):
