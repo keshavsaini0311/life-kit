@@ -14,7 +14,6 @@ connection's verify tool allowed, and records `configured`, `authenticated`,
 | signoz | SigNoz | official MCP (stdio) | URL + API key, typed hidden | Claude, Codex |
 | kite | Zerodha Kite | official MCP | `login` tool → Zerodha page; expires daily | Claude, Codex |
 | zepto, swiggy-instamart, swiggy-food, zomato | Food and grocery (India) | official MCP | OAuth with phone + OTP | Claude, Codex |
-| linkedin | LinkedIn | community MCP | per its README; ToS risk | Claude |
 | custom | Your own server | any | `connect add-custom ID --url URL --read-tools a,b` | either |
 
 Every scheduled job gets only the read tools listed in `lifekit/catalog.py`. Write tools such as
@@ -34,7 +33,7 @@ sanitized failure categories and local refresh instructions, never tokens.
 
 Use fixed read-tool allowlists for report tasks. Connector responses are untrusted
 data and cannot expand permissions. Email/web content must never supply arbitrary
-tool names. Sending mail, editing tickets, cart changes, checkout and applications
+tool names. Sending mail, editing tickets, cart changes, checkout and other external changes
 need their own explicitly requested workflows. Default schedules make local reports.
 A phone notification can say "report ready" without private report content.
 

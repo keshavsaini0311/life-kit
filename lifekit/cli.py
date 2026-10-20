@@ -78,7 +78,7 @@ def main(argv=None):
     p = sub.add_parser("checkin")
     p.add_argument("--sleep", type=float)
     p.add_argument("--gym", choices=("yes", "no", "rest"))
-    p.add_argument("--prep", type=int, help="Self-reported minutes")
+    p.add_argument("--study", "--prep", dest="prep", type=int, help="Self-reported study minutes")
     p.add_argument("--request-id", help="Retry key; same key + content writes once")
     p = sub.add_parser("spend")
     p.add_argument("amount")
@@ -86,11 +86,10 @@ def main(argv=None):
     p.add_argument("--note", default="")
     p.add_argument("--request-id")
     p = sub.add_parser("action", help="Record an action that actually occurred; does not perform it")
-    p.add_argument("--domain", choices=core.DOMAINS, default="career")
+    p.add_argument("--domain", choices=core.DOMAINS, default="learning")
     p.add_argument("--channel", required=True)
     p.add_argument("--target", required=True)
     p.add_argument("--variant", default="unrecorded")
-    p.add_argument("--resume", type=Path, help="Hash the actual file used; never uploads it")
     p.add_argument("--request-id")
     p = sub.add_parser("outcome")
     p.add_argument("action_id")
@@ -199,7 +198,7 @@ def main(argv=None):
             elif args.command == "spend":
                 event = core.spend(root, args.amount, args.category, args.note, args.request_id)
             elif args.command == "action":
-                event = core.action(root, args.domain, args.channel, args.target, args.variant, args.resume, args.request_id)
+                event = core.action(root, args.domain, args.channel, args.target, args.variant, args.request_id)
             else:
                 event = core.outcome(root, args.action_id, args.stage, args.evidence, args.request_id)
             print("Saved locally: " + event["id"])

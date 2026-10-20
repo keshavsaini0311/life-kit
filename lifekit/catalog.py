@@ -25,18 +25,18 @@ def _account(id, title, domains, docs, name, read_tools, verify):
 
 
 CONNECTIONS = [
-    _account("gmail", "Gmail", ["career", "finance", "personal"], "https://support.claude.com/en/articles/10166901",
+    _account("gmail", "Gmail", ["learning", "finance", "personal"], "https://support.claude.com/en/articles/10166901",
              "Gmail", ["search_threads", "get_thread", "get_message", "list_labels"], {"tool": "list_labels", "args": {}}),
-    _account("google-calendar", "Google Calendar", ["personal", "career", "work"],
+    _account("google-calendar", "Google Calendar", ["personal", "learning", "work"],
              "https://support.claude.com/en/articles/10166901", "Google Calendar",
              ["list_calendars", "list_events", "get_event"], {"tool": "list_calendars", "args": {}}),
-    _account("google-drive", "Google Drive", ["career", "personal"], "https://support.claude.com/en/articles/10166901",
-             "Google Drive", ["search", "fetch"], {"tool": "search", "args": {"query": "resume"}}),
+    _account("google-drive", "Google Drive", ["learning", "personal"], "https://support.claude.com/en/articles/10166901",
+             "Google Drive", ["search", "fetch"], {"tool": "search", "args": {"query": "notes"}}),
     _account("slack", "Slack", ["work"], "https://support.claude.com/en/articles/11506255", "Slack",
              ["slack_read_user_profile", "slack_search_channels", "slack_read_channel", "slack_read_thread",
               "slack_search_public"], {"tool": "slack_read_user_profile", "args": {}}),
 
-    _c("github", "GitHub", ["work", "career"], "official", "https://github.com/github/github-mcp-server",
+    _c("github", "GitHub", ["work", "learning"], "official", "https://github.com/github/github-mcp-server",
        {"type": "http", "url": "https://api.githubcopilot.com/mcp/readonly", "bearer_env": "LIFEKIT_GITHUB_TOKEN"},
        ["Create a fine-grained personal access token at https://github.com/settings/personal-access-tokens "
         "with read-only access to the repositories you want.",
@@ -98,15 +98,10 @@ CONNECTIONS = [
        ["get_saved_addresses_for_user", "get_order_history", "get_order_tracking_info", "get_restaurants_for_keyword"],
        {"tool": "get_saved_addresses_for_user", "args": {}},
        note="Cart, checkout and phone-binding tools are excluded. Zomato marks its server as for testing."),
-    _c("linkedin", "LinkedIn (community server)", ["career"], "community", "https://github.com/stickerdaniel/linkedin-mcp-server",
-       {"type": "stdio", "command": "uvx", "args": ["mcp-server-linkedin@latest"]},
-       ["Community-maintained, not LinkedIn's. Automated access may break LinkedIn's terms; use at your own risk.",
-        "Follow the server's README to sign in. Runners never send messages or connection requests."],
-       ["get_my_profile", "get_person_profile", "get_company_profile", "search_jobs", "get_job_details"],
-       {"tool": "get_my_profile", "args": {}}, headless=("claude",)),
+
 ]
 
-CUSTOM = _c("custom", "Your own MCP server", ["work", "career", "finance", "personal"], "custom",
+CUSTOM = _c("custom", "Your own MCP server", ["work", "learning", "finance", "personal"], "custom",
             "https://modelcontextprotocol.io/docs/getting-started/intro", {"type": "http", "url": ""},
             ["Use the server's own instructions to authenticate (`/mcp` in Claude Code, `codex mcp login ID`)."],
             [], None)

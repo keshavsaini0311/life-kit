@@ -154,12 +154,12 @@ class LearningTests(unittest.TestCase):
         path.write_text("".join(json.dumps(r) + "\n" for r in rows))
 
     def actions(self, n, days_ago, channel="email", variant="a", start=0):
-        return [event("action", days_ago, id="act" + str(start + i), domain="career", channel=channel,
+        return [event("action", days_ago, id="act" + str(start + i), domain="learning", channel=channel,
                       target="t" + str(start + i), variant=variant) for i in range(n)]
 
     def test_learning_rate_needs_five_eligible(self):
         rows = self.actions(4, 20)
-        rows.append(event("outcome", 10, id="o1", domain="career", action_id="act0", stage="reply", evidence="self-report"))
+        rows.append(event("outcome", 10, id="o1", domain="learning", action_id="act0", stage="completed", evidence="self-report"))
         self.write(rows)
         text = learning.report(self.root).read_text()
         self.assertIn("too few", text)
@@ -167,22 +167,22 @@ class LearningTests(unittest.TestCase):
 
     def test_rate_shown_with_five_eligible(self):
         rows = self.actions(5, 20)
-        rows += [event("outcome", 10, id="o1", domain="career", action_id="act0", stage="reply", evidence="x"),
-                 event("outcome", 9, id="o2", domain="career", action_id="act0", stage="reply", evidence="dup")]
+        rows += [event("outcome", 10, id="o1", domain="learning", action_id="act0", stage="completed", evidence="x"),
+                 event("outcome", 9, id="o2", domain="learning", action_id="act0", stage="completed", evidence="dup")]
         self.write(rows)
-        self.assertIn("reply 1/5 (20%)", learning.report(self.root).read_text())
+        self.assertIn("completed 1/5 (20%)", learning.report(self.root).read_text())
 
     def test_recent_actions_excluded_from_rates(self):
         self.write(self.actions(5, 20) + self.actions(5, 2, start=5))
         text = learning.report(self.root).read_text()
-        self.assertIn("reply 0/5 (0%)", text)
+        self.assertIn("completed 0/5 (0%)", text)
         self.assertIn("5 too recent", text)
 
     def test_followups_listed_after_14_days(self):
         self.write(self.actions(1, 20) + self.actions(1, 3, start=1))
         text = learning.report(self.root).read_text()
-        self.assertIn("act0", text.split("## Follow-up candidates")[1])
-        self.assertNotIn("act1", text.split("## Follow-up candidates")[1])
+        self.assertIn("act0", text.split("## Activities to review")[1])
+        self.assertNotIn("act1", text.split("## Activities to review")[1])
 
     def test_maintain_writes_freshness(self):
         path = maintain.run(self.root)

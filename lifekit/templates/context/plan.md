@@ -1,4 +1,10 @@
-# Prep plan
+# Study plan
 
-| Date | Topic | Mode | Minutes | Notes |
+## Next topic
+
+Unknown. Choose a topic with the user.
+
+## Sessions
+
+| Date | Topic | Mode | Minutes | Evidence and next step |
 |---|---|---|---|---|

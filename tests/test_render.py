@@ -7,13 +7,12 @@ from lifekit import core, render
 
 FULL = {
     "basics.currency": "USD", "basics.name": "Sam", "basics.timezone": "Europe/London",
-    "domains.enabled": ["personal", "finance", "career", "work"],
+    "domains.enabled": ["personal", "finance", "learning", "work"],
     "rules.work_hours": "Mon-Fri 9-6", "rules.free_time": "1h after dinner", "rules.review_time": "21:30",
     "rules.privacy": None, "rules.tone": "Direct",
     "personal.goals": "Run a 10k", "personal.routine": None, "personal.notes": None,
     "finance.income_monthly": "5000", "finance.baseline_spend": "3000", "finance.goals": None, "finance.bank_csv": True,
-    "career.current_role": "Backend engineer", "career.target": "Senior in 1 year", "career.locations": "Remote",
-    "career.resume_path": None, "career.prep_topics": "System design",
+    "learning.goals": "Understand databases", "learning.topics": "SQL", "learning.resources_path": None,
     "work.employer": "Example Co, engineer", "work.tools": ["github", "slack"], "work.standup_time": "10:00",
     "assistants.enabled": ["claude", "codex"], "assistants.primary": "claude",
 }
@@ -31,8 +30,8 @@ class RenderTests(unittest.TestCase):
     def test_apply_writes_core_files(self):
         written = render.apply(self.root, FULL)
         for rel in ("AGENTS.md", "CLAUDE.md", "LIFE.md", "personal/rules.md", "memory/MEMORY.md",
-                    "personal/context.md", "finance/context.md", "finance/rules.json", "career/context.md",
-                    "career/job-search/tracker.md", "career/prep/plan.md", "work/context.md", "work/standup.md"):
+                    "personal/context.md", "finance/context.md", "finance/rules.json", "learning/context.md",
+                    "learning/plan.md", "work/context.md", "work/standup.md"):
             self.assertTrue((self.root / rel).is_file(), rel)
         self.assertIn("personal/rules.md", written)
         self.assertIn("Sam", self.read("personal/rules.md"))
@@ -74,12 +73,12 @@ class RenderTests(unittest.TestCase):
         if link.is_symlink():
             self.assertEqual(os.readlink(str(link)), os.path.join("..", ".agents", "skills"))
 
-    def test_outreach_skills_say_drafts_only(self):
+    def test_learning_setup_contains_study_and_no_search_workflows(self):
         render.apply(self.root, FULL)
-        for name in ("hiring-outreach", "apply-autofill", "find-contact", "job-hunt"):
-            text = self.read(".agents/skills/" + name + "/SKILL.md").lower()
-            self.assertIn("draft", text, name)
-            self.assertTrue("never send" in text or "never submit" in text, name)
+        skills = {p.name for p in (self.root / ".agents/skills").iterdir()}
+        self.assertEqual(skills, {"life", "daily", "learn", "life-review", "finance", "study", "work"})
+        self.assertFalse((self.root / "learning/job-search").exists())
+        self.assertIn("SQL", self.read("learning/context.md"))
 
     def test_templates_have_no_unfilled_placeholders(self):
         # strict string.Template substitution raises on any unknown $placeholder

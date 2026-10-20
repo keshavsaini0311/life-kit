@@ -186,6 +186,8 @@ def integrate(root, answers, io, run=subprocess.run, interactive=True):
         else:
             io.say("Install later: " + plugin["install"])
     for conn_id in answers.get("connections.selected") or []:
+        if conn_id not in connections.enabled(root):
+            continue
         item = connections.entry(root, conn_id)
         io.say("\n" + item["title"] + " — how to log in:")
         for step in item["login"]:
@@ -247,7 +249,10 @@ def finish(root, answers, fresh=None):
     core.update_config(root, change)
     written = render.apply(root, answers)
     if answers.get("connections.selected"):
-        written += connections.write_configs(root, answers["connections.selected"])
+        known = {item["id"] for item in catalog.CONNECTIONS}
+        selected = [name for name in answers["connections.selected"] if name in known]
+        if selected:
+            written += connections.write_configs(root, selected)
     if "runners.selected" in answers:
         picked = answers["runners.selected"] or []
         saved = before.get("runners") or {}

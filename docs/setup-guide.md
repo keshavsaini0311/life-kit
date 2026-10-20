@@ -36,9 +36,9 @@ Pick the parts of life you want help with. You can add more later by re-running 
 ### Which life areas do you want? (comma-separated numbers or names)
 
 - **Why:** Each area gets its own folder, skills and optional scheduled runs. Unpicked areas stay out of the way.
-- **Example:** personal, finance, career
+- **Example:** personal, finance, learning
 - **If you skip:** Only the core check-in, spending and review commands are set up.
-- **Choices:** personal, finance, career, work
+- **Choices:** personal, finance, learning, work
 
 ## Rules and routine
 
@@ -87,7 +87,7 @@ A short portrait so suggestions fit your real life.
 
 ### Describe a normal day in one or two lines.
 
-- **Why:** Helps assistants place reminders and prep at times that actually work.
+- **Why:** Helps assistants place reminders and study at times that actually work.
 - **Example:** Wake 8, office 10-7, gym 8pm, dinner 9:30
 - **If you skip:** Recorded as unknown. Assistants will ask instead of guessing.
 - **Asked when:** personal area enabled
@@ -131,44 +131,30 @@ Numbers are stored with today's date, so nobody mistakes an old number for a cur
 - **If you skip:** No automatic import; log spending by hand or by phone.
 - **Asked when:** finance area enabled
 
-## Career
+## Learning
 
-Your current job, where you want to go, and how you prepare.
+Topics, learning goals and practice time.
 
-### What is your current role and experience?
+### What would you like to learn or improve?
 
-- **Why:** Job search and prep skills tailor to your level.
-- **Example:** Backend engineer, 2 years, Node + Postgres
+- **Why:** Learning plans start from your own goals, without assuming a deadline.
+- **Example:** Understand distributed systems and build a small project
 - **If you skip:** Recorded as unknown. Assistants will ask instead of guessing.
-- **Asked when:** career area enabled
+- **Asked when:** learning area enabled
 
-### What role and pay are you aiming for, and by when?
+### Which topics would you like to practise?
 
-- **Why:** Job discovery filters by this; prep plans work back from the date.
-- **Example:** SDE-2 backend, 30L+, within 6 months
+- **Why:** The study skill uses these to choose a useful next session.
+- **Example:** SQL, system design, writing
 - **If you skip:** Recorded as unknown. Assistants will ask instead of guessing.
-- **Asked when:** career area enabled
+- **Asked when:** learning area enabled
 
-### Where can you work?
+### Path to learning notes or a resource file?
 
-- **Why:** Filters job listings.
-- **Example:** Bangalore or remote (India)
-- **If you skip:** All locations considered.
-- **Asked when:** career area enabled
-
-### Path to your current resume file (PDF or source)?
-
-- **Why:** Applications record a fingerprint of the exact file used. The file is never uploaded by setup.
-- **Example:** ~/Documents/resume.pdf
-- **If you skip:** Resume-related steps will ask for it when needed.
-- **Asked when:** career area enabled
-
-### Which interview topics do you want to practise?
-
-- **Why:** The prep skill builds a plan from these.
-- **Example:** DSA, system design, SQL, behavioural
-- **If you skip:** Recorded as unknown. Assistants will ask instead of guessing.
-- **Asked when:** career area enabled
+- **Why:** An optional reference for study sessions; setup does not upload it.
+- **Example:** ~/Documents/study-notes.md
+- **If you skip:** No reference file; you can add one later.
+- **Asked when:** learning area enabled
 
 ## Day job
 
@@ -240,10 +226,10 @@ Optional accounts your assistant may read: mail, calendar, work tools, broker, s
 
 ### Which connections do you want? (comma-separated, or none)
 
-- **Why:** Each lets your assistant READ one service. Writes like sending, ordering or editing tickets stay off. gmail = Gmail; google-calendar = Google Calendar; google-drive = Google Drive; slack = Slack; github = GitHub; clickup = ClickUp; notion = Notion; linear = Linear; signoz = SigNoz; kite = Zerodha Kite (read-only); zepto = Zepto; swiggy-instamart = Swiggy Instamart; swiggy-food = Swiggy Food; zomato = Zomato; linkedin = LinkedIn (community server);
+- **Why:** Each lets your assistant READ one service. Writes like sending, ordering or editing tickets stay off. gmail = Gmail; google-calendar = Google Calendar; google-drive = Google Drive; slack = Slack; github = GitHub; clickup = ClickUp; notion = Notion; linear = Linear; signoz = SigNoz; kite = Zerodha Kite (read-only); zepto = Zepto; swiggy-instamart = Swiggy Instamart; swiggy-food = Swiggy Food; zomato = Zomato;
 - **Example:** gmail, google-calendar, github
 - **If you skip:** No connections. Everything works from local files.
-- **Choices:** gmail, google-calendar, google-drive, slack, github, clickup, notion, linear, signoz, kite, zepto, swiggy-instamart, swiggy-food, zomato, linkedin
+- **Choices:** gmail, google-calendar, google-drive, slack, github, clickup, notion, linear, signoz, kite, zepto, swiggy-instamart, swiggy-food, zomato
 
 ### GitHub: GitHub token (read-only)
 
@@ -282,10 +268,10 @@ Jobs your computer runs on its own at times you choose. Reports stay on this com
 
 ### Which jobs should run on their own? (comma-separated, or none)
 
-- **Why:** Each runs at the time you pick next, read-only, and saves a local report. maintain: Import statements, rebuild ledgers and learning, list stale data. nightly-report: Nightly review and next actions. work-brief: Morning work brief (tasks, PRs, mentions, service health). inbox-review: Recruiter inbox review. calendar-prep: Calendar-aware prep suggestions. finance-capture: Weekly money check (ledger, review rows, broker holdings). receipt-review: Receipt emails to confirm as spending. job-discovery: Public job listings that fit your target (no applying). learn: Weekly learning review of what converts.
-- **Example:** maintain, nightly-report, job-discovery
+- **Why:** Each runs at the time you pick next, read-only, and saves a local report. maintain: Import statements, rebuild ledgers and learning, list stale data. nightly-report: Nightly review and next actions. work-brief: Morning work brief (tasks, PRs, mentions, service health). inbox-review: Inbox follow-up review. calendar-prep: Calendar-aware study suggestions. finance-capture: Weekly money check (ledger, review rows, broker holdings). receipt-review: Receipt emails to confirm as spending. learn: Weekly review of learning and activity outcomes.
+- **Example:** maintain, nightly-report, learn
 - **If you skip:** Nothing is scheduled; run any job by hand with `life-kit run ID`.
-- **Choices:** maintain, nightly-report, work-brief, inbox-review, calendar-prep, finance-capture, receipt-review, job-discovery, learn
+- **Choices:** maintain, nightly-report, work-brief, inbox-review, calendar-prep, finance-capture, receipt-review, learn
 
 ### When should 'maintain' run? (times then days)
 
@@ -310,14 +296,14 @@ Jobs your computer runs on its own at times you choose. Reports stay on this com
 
 ### When should 'inbox-review' run? (times then days)
 
-- **Why:** Recruiter inbox review. Your computer must be on and logged in at that time; a missed run catches up when it wakes (macOS/Linux).
+- **Why:** Inbox follow-up review. Your computer must be on and logged in at that time; a missed run catches up when it wakes (macOS/Linux).
 - **Example:** 08:30 weekdays · 09:00,19:00 daily · 18:00 sun
 - **If you skip:** The suggested time is used.
 - **Asked when:** inbox-review picked
 
 ### When should 'calendar-prep' run? (times then days)
 
-- **Why:** Calendar-aware prep suggestions. Your computer must be on and logged in at that time; a missed run catches up when it wakes (macOS/Linux).
+- **Why:** Calendar-aware study suggestions. Your computer must be on and logged in at that time; a missed run catches up when it wakes (macOS/Linux).
 - **Example:** 08:30 weekdays · 09:00,19:00 daily · 18:00 sun
 - **If you skip:** The suggested time is used.
 - **Asked when:** calendar-prep picked
@@ -336,16 +322,9 @@ Jobs your computer runs on its own at times you choose. Reports stay on this com
 - **If you skip:** The suggested time is used.
 - **Asked when:** receipt-review picked
 
-### When should 'job-discovery' run? (times then days)
-
-- **Why:** Public job listings that fit your target (no applying). Your computer must be on and logged in at that time; a missed run catches up when it wakes (macOS/Linux).
-- **Example:** 08:30 weekdays · 09:00,19:00 daily · 18:00 sun
-- **If you skip:** The suggested time is used.
-- **Asked when:** job-discovery picked
-
 ### When should 'learn' run? (times then days)
 
-- **Why:** Weekly learning review of what converts. Your computer must be on and logged in at that time; a missed run catches up when it wakes (macOS/Linux).
+- **Why:** Weekly review of learning and activity outcomes. Your computer must be on and logged in at that time; a missed run catches up when it wakes (macOS/Linux).
 - **Example:** 08:30 weekdays · 09:00,19:00 daily · 18:00 sun
 - **If you skip:** The suggested time is used.
 - **Asked when:** learn picked
@@ -369,16 +348,16 @@ Optional: control Life Kit and get 'report ready' pings from your phone.
 
 ### Which areas may send their content to your phone?
 
-- **Why:** Messages pass through Telegram's servers. Areas not listed only get 'done / failed, saved on your computer'. Sharing career replies (job lists, prep) but keeping money and personal local is the usual choice.
-- **Example:** career
+- **Why:** Messages pass through Telegram's servers. Areas not listed only get 'done / failed, saved on your computer'. Only opt into the areas you want to receive; money and personal details can stay local.
+- **Example:** learning
 - **If you skip:** Only status messages are sent; all content stays on your computer.
-- **Choices:** career, work, personal, finance
+- **Choices:** learning, work, personal, finance
 - **Asked when:** Telegram enabled
 
 ### Which scheduled jobs should ping your phone when they finish?
 
 - **Why:** Pings arrive when each job finishes, so they follow the times you chose for scheduled jobs.
-- **Example:** nightly-report, job-discovery
+- **Example:** nightly-report, learn
 - **If you skip:** No pings; use /status to check.
-- **Choices:** maintain, nightly-report, work-brief, inbox-review, calendar-prep, finance-capture, receipt-review, job-discovery, learn
+- **Choices:** maintain, nightly-report, work-brief, inbox-review, calendar-prep, finance-capture, receipt-review, learn
 - **Asked when:** Telegram enabled

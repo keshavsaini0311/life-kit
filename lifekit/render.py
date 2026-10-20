@@ -10,38 +10,31 @@ from . import core, questions
 
 TEMPLATES = Path(__file__).resolve().parent / "templates"
 ALWAYS_SKILLS = ["life", "daily", "learn", "life-review"]
-SKILLS_BY_DOMAIN = {"personal": [], "finance": ["finance"], "work": ["work"],
-                    "career": ["prep", "job-hunt", "hiring-outreach", "apply-autofill", "find-contact"]}
-# (template, destination, domain or None for always)
+SKILLS_BY_DOMAIN = {"personal": [], "finance": ["finance"], "work": ["work"], "learning": ["study"]}
 FILES = [("AGENTS.md", "AGENTS.md", None), ("CLAUDE.md", "CLAUDE.md", None), ("LIFE.md", "LIFE.md", None),
          ("rules.md", "personal/rules.md", None), ("MEMORY.md", "memory/MEMORY.md", None),
          ("personal.md", "personal/context.md", "personal"), ("now.md", "personal/now.md", "personal"),
          ("finance.md", "finance/context.md", "finance"),
-         ("career.md", "career/context.md", "career"), ("plan.md", "career/prep/plan.md", "career"),
-         ("tracker.md", "career/job-search/tracker.md", "career"),
+         ("learning.md", "learning/context.md", "learning"), ("plan.md", "learning/plan.md", "learning"),
          ("work.md", "work/context.md", "work"), ("standup.md", "work/standup.md", "work")]
-DIRS = {None: ["learning/reports"], "finance": ["finance/inbox", "finance/imports", "finance/ledger"],
-        "career": ["career/job-search/drafts"]}
+DIRS = {None: ["learning/reports"], "finance": ["finance/inbox", "finance/imports", "finance/ledger"]}
 AREAS = {
-    "personal": ("Personal", "`personal/`", "(context layer)", "Goals, routine, health, people, daily notes. Read by everything."),
-    "finance": ("Finance", "`finance/`", "`finance`", "Income, spending, ledger, investments, goals."),
-    "career": ("Career", "`career/`", "`prep`, `job-hunt`, `hiring-outreach`, `apply-autofill`, `find-contact`",
-               "Interview prep, job search, resume, outreach drafts."),
-    "work": ("Work", "`work/`", "`work`", "Day job: standup, tickets, PRs, service health. Read-only."),
+    "personal": ("Personal", "`personal/`", "(context layer)", "Goals, routine, health, people and daily notes."),
+    "finance": ("Finance", "`finance/`", "`finance`", "Income, spending, ledger, investments and goals."),
+    "learning": ("Learning", "`learning/`", "`study`, `learn`", "Learning goals, study sessions and activity outcomes."),
+    "work": ("Work", "`work/`", "`work`", "Standups, tickets, PRs and service health. Read-only."),
 }
 ROUTES = [
-    (None, '"daily run", "let\'s do today", or showing up for the evening review', "`daily`"),
-    (None, '"how am I doing", "what should I focus on", anything spanning areas', "`life`"),
-    (None, '"what\'s working", "review the week", "audit the rules"', "`learn`"),
-    ("finance", '"I spent X", "salary came", "can I afford", "where do I invest"', "`finance`"),
-    ("career", '"teach me", "test me on system design", "I have a round at X"', "`prep`"),
-    ("career", '"find me jobs", "who do I email", "draft outreach", "fill this application"',
-     "`job-hunt` / `find-contact` / `hiring-outreach` / `apply-autofill`"),
-    ("work", '"standup", "what did I ship", "is my service ok", "my tickets"', "`work`"),
-    ("personal", "family, health, gym, food, how you're doing", "`personal/` under the rules file"),
+    (None, '"daily run" or "review today"', "`daily`"),
+    (None, '"how am I doing" or anything spanning areas', "`life`"),
+    (None, '"what is working" or "review the week"', "`learn`"),
+    ("finance", '"I spent X", "salary came", "can I afford"', "`finance`"),
+    ("learning", '"teach me", "test my understanding", "what should I study"', "`study`"),
+    ("work", '"standup", "what did I ship", "my tickets"', "`work`"),
+    ("personal", "family, health, gym or daily routine", "`personal/` under the rules file"),
 ]
 LOGS = {"finance": ["| Monthly ledger (generated) | `finance/ledger/YYYY-MM.md` |"],
-        "career": ["| Prep sessions | `career/prep/plan.md` |", "| Applications and outreach | `career/job-search/tracker.md` |"],
+        "learning": ["| Study sessions | `learning/plan.md` |"],
         "personal": ["| Personal, per day | `personal/now.md` |"],
         "work": ["| Standup | `work/standup.md` |"]}
 
@@ -57,7 +50,7 @@ def _fmt(value):
 
 
 def values(root, answers):
-    domains = answers.get("domains.enabled") or []
+    domains = [d for d in (answers.get("domains.enabled") or []) if d in AREAS]
     result = {q["id"].replace(".", "_"): _fmt(answers.get(q["id"])) for q in questions.QUESTIONS}
     result.update(name=answers.get("basics.name") or "you", workspace=str(root), today=date.today().isoformat())
     result["domain_table"] = "\n".join("| " + " | ".join(AREAS[d]) + " |" for d in domains) or "| (none yet) | | | |"
@@ -114,7 +107,7 @@ def _link_claude_skills(root, rendered, put):
 
 def apply(root, answers):
     root = Path(root).expanduser().resolve()
-    domains = answers.get("domains.enabled") or []
+    domains = [d for d in (answers.get("domains.enabled") or []) if d in AREAS]
     mapping = values(root, answers)
     record = root / ".local/rendered.json"
     rendered = json.loads(record.read_text(encoding="utf-8")) if record.is_file() else {}

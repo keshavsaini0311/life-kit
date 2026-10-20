@@ -1,3 +1,4 @@
-Task: look at the next 3 days of $name's calendar. Note interviews and fixed commitments, then
-suggest realistic prep windows using career/prep/plan.md and personal/rules.md (free time, busy hours).
+Task: review the next 3 days of the calendar. Note fixed commitments and suggest realistic
+study or planning windows from learning/plan.md and personal/rules.md. If learning is not enabled,
+focus on the user's stated personal priorities. Don't assume an empty calendar means free time.
 Do not create or change events.

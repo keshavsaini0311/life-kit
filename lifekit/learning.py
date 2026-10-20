@@ -1,4 +1,4 @@
-"""Deterministic learning report: what converts, per channel and variant, from explicit action IDs only."""
+"""Deterministic learning report: activity outcomes, per channel and variant, from explicit action IDs only."""
 from datetime import date
 
 from . import core
@@ -6,7 +6,7 @@ from . import core
 MIN_N = 5          # below this, a rate is noise
 MIN_AGE_DAYS = 7   # newer actions have not had time to get an answer
 FOLLOW_UP_DAYS = 14
-KEY_STAGES = ("reply", "referral", "interview", "offer")
+KEY_STAGES = ("completed", "reviewed", "improved", "blocked")
 
 
 def report(root, today=None):
@@ -27,7 +27,7 @@ def report(root, today=None):
              "No outcome is unknown, not a confirmed failure. Correlation here is not proof of cause.", "",
              "## By channel and variant", ""]
     if not groups:
-        lines.append("No actions recorded yet. Record real sends with `life-kit action`.")
+        lines.append("No actions recorded yet. Record completed activities with `life-kit action`.")
     for (channel, variant), items in sorted(groups.items()):
         eligible = [a for a in items if (today - core.event_day(a)).days >= MIN_AGE_DAYS]
         recent = len(items) - len(eligible)
@@ -40,8 +40,8 @@ def report(root, today=None):
             hits = sum(1 for a in eligible if stage in outcomes.get(a["id"], ()))
             rates.append(stage + " " + str(hits) + "/" + str(len(eligible)) + " (" + str(round(100 * hits / len(eligible))) + "%)")
         lines.append(head + " — " + ", ".join(rates))
-    lines += ["", "## Follow-up candidates", "",
-              "Actions older than " + str(FOLLOW_UP_DAYS) + " days with no recorded outcome. Check the thread before following up.", ""]
+    lines += ["", "## Activities to review", "",
+              "Actions older than " + str(FOLLOW_UP_DAYS) + " days with no recorded outcome. Check your notes before deciding what to do next.", ""]
     stale = [a for a in actions if (today - core.event_day(a)).days > FOLLOW_UP_DAYS and a["id"] not in outcomes]
     lines += ["- " + a["id"] + ": " + a["channel"] + " → " + a["target"] + " (" + str((today - core.event_day(a)).days)
               + " days)" for a in stale] or ["None."]

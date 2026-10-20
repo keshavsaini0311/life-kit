@@ -31,7 +31,7 @@ class ScheduleTests(unittest.TestCase):
         self.home = Path(self.temp.name) / "home"
         self.home.mkdir()
         self.root = core.init(Path(self.temp.name) / "w", "USD")
-        core.update_config(self.root, lambda c: c.update(domains=["work", "career"], connections={"github": {}}))
+        core.update_config(self.root, lambda c: c.update(domains=["work", "learning"], connections={"github": {}}))
         schedule.set_runner(self.root, "work-brief", "08:30", "weekdays")
         schedule.set_runner(self.root, "nightly-report", "22:15", "daily")
 
@@ -120,11 +120,11 @@ class ScheduleTests(unittest.TestCase):
         from lifekit import wizard
         root = Path(self.temp.name) / "fresh"
         wizard.run(root, io=Quiet(), interactive=False, answers={
-            "basics.currency": "USD", "domains.enabled": ["career"], "rules.review_time": "21:00",
-            "runners.selected": ["nightly-report", "job-discovery"], "runner.job-discovery": "07:15 weekdays"})
+            "basics.currency": "USD", "domains.enabled": ["learning"], "rules.review_time": "21:00",
+            "runners.selected": ["nightly-report", "learn"], "runner.learn": "07:15 weekdays"})
         config = core.load(root)[1]
-        self.assertEqual(config["runners"]["job-discovery"], {"enabled": True, "times": ["07:15"], "days": "weekdays"})
-        self.assertFalse(config["runners"]["learn"]["enabled"])
+        self.assertEqual(config["runners"]["learn"], {"enabled": True, "times": ["07:15"], "days": "weekdays"})
+        self.assertFalse(config["runners"]["receipt-review"]["enabled"])
         self.assertTrue(config["runners"]["nightly-report"]["enabled"])
 
     def test_schtasks_quotes_path_with_spaces(self):
@@ -143,12 +143,12 @@ class ScheduleTests(unittest.TestCase):
         from lifekit import wizard
         root = Path(self.temp.name) / "fresh"
         wizard.run(root, io=Quiet(), interactive=False, answers={
-            "basics.currency": "USD", "domains.enabled": ["career"], "runners.selected": ["nightly-report", "job-discovery"]})
-        schedule.set_runner(root, "job-discovery", "07:15", "weekdays")
+            "basics.currency": "USD", "domains.enabled": ["learning"], "runners.selected": ["nightly-report", "learn"]})
+        schedule.set_runner(root, "learn", "07:15", "weekdays")
         schedule.set_runner(root, "nightly-report", "22:00", "daily", enabled=False)
         wizard.run(root, io=Quiet(), interactive=False)
         config = core.load(root)[1]
-        self.assertEqual(config["runners"]["job-discovery"]["times"], ["07:15"])
+        self.assertEqual(config["runners"]["learn"]["times"], ["07:15"])
         self.assertFalse(config["runners"]["nightly-report"]["enabled"])
 
 

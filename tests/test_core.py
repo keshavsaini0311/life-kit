@@ -64,8 +64,8 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(len(core.events(self.root)), 1)
 
     def test_outcome_credits_only_specific_action(self):
-        first = core.action(self.root, "career", "email", "same-person")
-        core.action(self.root, "career", "email", "same-person")
+        first = core.action(self.root, "learning", "email", "same-person")
+        core.action(self.root, "learning", "email", "same-person")
         for _ in range(2):
             core.outcome(self.root, first["id"], "reply", "explicit self-report")
         core.outcome(self.root, first["id"], "receipt", "mail receipt")
@@ -73,7 +73,7 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(status["actions"], 2)
         self.assertEqual(status["outcomes_by_action"]["reply"], 1)
         self.assertEqual(status["outcomes_by_action"]["receipt"], 1)
-        self.assertEqual(status["outcomes_by_action"]["interview"], 0)
+        self.assertEqual(status["outcomes_by_action"]["improved"], 0)
 
     def test_unlinked_outcome_is_rejected(self):
         with self.assertRaises(ValueError):
@@ -98,14 +98,12 @@ class WorkspaceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             core.outcome(self.root, event["id"], "reply", "self-report")
 
-    def test_resume_fingerprint_no_file_copy(self):
-        resume = Path(self.temp.name) / "resume.txt"
-        resume.write_text("fictional resume")
-        first = core.action(self.root, "career", "application", "fictional-role", resume=resume)
-        resume.write_text("fictional revision")
-        second = core.action(self.root, "career", "application", "fictional-role", resume=resume)
-        self.assertNotEqual(first["resume_sha256"], second["resume_sha256"])
-        self.assertNotIn("fictional revision", (self.root / "learning/events.jsonl").read_text())
+    def test_activity_records_context_without_copying_files(self):
+        activity = core.action(self.root, "learning", "practice", "SQL joins", "worked-example")
+        self.assertEqual(activity["target"], "SQL joins")
+        self.assertEqual(activity["variant"], "worked-example")
+        core.outcome(self.root, activity["id"], "completed", "self-reported exercise")
+        self.assertEqual(core.snapshot(self.root)["outcomes_by_action"]["completed"], 1)
 
     def test_future_event_excluded(self):
         core.checkin(self.root, prep=30)

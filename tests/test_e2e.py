@@ -27,8 +27,8 @@ class EndToEndTests(unittest.TestCase):
         result = self.setup_cli()
         self.assertEqual(result.returncode, 0, result.stderr)
         for rel in ("personal/rules.md", "LIFE.md", "AGENTS.md", "CLAUDE.md", "memory/MEMORY.md",
-                    ".agents/skills/job-hunt/SKILL.md", ".claude/skills/finance/SKILL.md",
-                    ".mcp.json", ".codex/config.toml", "finance/rules.json", "career/job-search/tracker.md"):
+                    ".agents/skills/study/SKILL.md", ".claude/skills/finance/SKILL.md",
+                    ".mcp.json", ".codex/config.toml", "finance/rules.json"):
             self.assertTrue((self.root / rel).exists(), rel)
         config = core.load(self.root)[1]
         self.assertEqual(config["runners"]["inbox-review"]["times"], ["09:00", "18:30"])

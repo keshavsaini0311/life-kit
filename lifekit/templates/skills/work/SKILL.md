@@ -75,7 +75,7 @@ writes down. Observability turns "I shipped it" into "I shipped it and it is fin
 7. **Append** a dated `## YYYY-MM-DD` block to `work/standup.md`, newest at top, then print it for
    the user to paste.
 8. If something is genuinely notable (an incident handled, a migration led), offer to note it in
-   `career/context.md` as story material. Only with the user's nod, and never invent impact.
+   `learning/context.md` as story material. Only with the user's nod, and never invent impact.
 
 ### PROD — "is my service okay", "what's this alert", "did anything break"
 
@@ -101,11 +101,11 @@ contradicts it, and the merge date. Nothing more; the user fixes it in one pass.
 
 - The standup goes to `work/standup.md`, always.
 - A durable fact about the team, services, handles or baselines goes to `work/context.md`, dated.
-- A story worth telling in an interview goes to `career/context.md`, only with the user's nod.
+- A reusable technical lesson goes to `learning/context.md`, only with the user's nod.
 - Something that only mattered today goes nowhere.
 
 ## Privacy
 
 `work/` holds the employer's internal detail: service names, error rates, ticket IDs, colleague
-names. It **never leaves this machine**: not into a resume, an outreach draft, an artifact, or
+names. It **never leaves this machine**: not into a shared document, an external message, an artifact, or
 anything published. If a task seems to need it, stop and ask.
