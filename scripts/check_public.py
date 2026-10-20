@@ -6,11 +6,12 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 FILES = {"README.md", "AGENTS.md", "CONTRIBUTING.md", "SECURITY.md", "LICENSE", "pyproject.toml", ".gitignore"}
-DIRECTORIES = {"lifekit", "tests", "scripts", "skills", "examples", "docs", ".github"}
+DIRECTORIES = {"lifekit", "tests", "scripts", "examples", "docs", ".github"}
 PATTERNS = [
     ("home-directory path", re.compile(r"/(?:Users|home)/[A-Za-z0-9_-]+/")),
     ("GitHub token", re.compile(r"gh[pousr]_" + r"[A-Za-z0-9]{20,}")),
     ("private key", re.compile(r"-----BEGIN " + r"(?:RSA |OPENSSH |EC )?PRIVATE KEY-----")),
+    ("personal email address", re.compile(r"[A-Za-z0-9._%+-]+@(?!example\.(?:com|org)\b|anthropic\.com\b|users\.noreply\.github\.com\b)[A-Za-z0-9-]+\.[A-Za-z.]{2,}")),
     ("credential assignment", re.compile(r'(?i)(?:access_token|refresh_token|client_secret|bot_token)\s*[=:]\s*[\"\x27][A-Za-z0-9_./+-]{16,}')),
 ]
 

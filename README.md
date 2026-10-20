@@ -76,7 +76,7 @@ versions are never guessed.
 ## Use with an assistant
 
 Ask your local assistant to read the private workspace's AGENTS.md and rules, then
-help with a specific domain. Use [life-review](skills/life-review/SKILL.md) if it supports
+help with a specific domain. Use [life-review](lifekit/templates/skills/life-review/SKILL.md) if it supports
 skills. The CLI never starts an AI session. An AI provider has its own data handling:
 local storage does not mean files stay local once a remote model reads them.
 

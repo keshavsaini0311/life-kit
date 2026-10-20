@@ -17,3 +17,6 @@ life-kit = "lifekit.cli:main"
 [tool.setuptools.packages.find]
 include = ["lifekit*"]
 
+[tool.setuptools.package-data]
+lifekit = ["templates/**/*"]
+

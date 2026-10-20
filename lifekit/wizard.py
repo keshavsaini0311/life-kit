@@ -3,7 +3,7 @@ import getpass
 import json
 from pathlib import Path
 
-from . import core, questions
+from . import core, questions, render
 
 ANSWERS = ".local/setup-answers.json"
 BACK = object()
@@ -122,12 +122,14 @@ def run(root, io=None, answers=None, answers_file=None, interactive=True, only=N
         stored[q["id"]] = value
         history.append(q["id"])
         save_answers(root, stored)
-    finish(root, stored)
+    for rel in finish(root, stored):
+        if rel.endswith(".suggested"):
+            io.say("Kept your edited " + rel[:-10] + "; new version saved as " + rel)
     return stored
 
 
 def finish(root, answers):
-    """Write answers that belong in life.json. Context files and integrations are rendered elsewhere."""
+    """Save life.json settings, then render context files and skills. Returns paths written."""
     def change(config):
         profile = config.setdefault("profile", {})
         for key in ("name", "timezone"):
@@ -140,3 +142,4 @@ def finish(root, answers):
             config["assistants"] = enabled
             config["primary_assistant"] = answers.get("assistants.primary") or (enabled[0] if enabled else None)
     core.update_config(root, change)
+    return render.apply(root, answers)
